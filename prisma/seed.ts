@@ -45,9 +45,16 @@ import {
   SubscriptionStatus,
 } from "../src/generated/prisma/client";
 import { LESSON_COMPLETION_MIN_PERCENT } from "../src/config/business";
+import { seedConteudoEstados } from "./conteudo-estados";
 
-if (process.env.NODE_ENV === "production" || ["production", "staging"].includes(process.env.APP_ENV ?? "") || process.env.ALLOW_DEMO_SEED !== "true") {
-  throw new Error("Seed demonstrativo exige ALLOW_DEMO_SEED=true em ambiente local/teste; proibido em produção/staging.");
+if (
+  process.env.NODE_ENV === "production" ||
+  ["production", "staging"].includes(process.env.APP_ENV ?? "") ||
+  process.env.ALLOW_DEMO_SEED !== "true"
+) {
+  throw new Error(
+    "Seed demonstrativo exige ALLOW_DEMO_SEED=true em ambiente local/teste; proibido em produção/staging.",
+  );
 }
 
 const databaseUrl = process.env.DATABASE_URL;
@@ -90,13 +97,25 @@ async function seedRolesAndPermissions() {
   }
 
   const permissions = [
-    { id: "perm-course-publish", key: "course:publish", description: "Publicar/despublicar cursos" },
+    {
+      id: "perm-course-publish",
+      key: "course:publish",
+      description: "Publicar/despublicar cursos",
+    },
     { id: "perm-question-review", key: "question:review", description: "Revisar/aprovar questões" },
-    { id: "perm-ranking-override", key: "ranking:override", description: "Ajustar/recalcular ranking manualmente" },
+    {
+      id: "perm-ranking-override",
+      key: "ranking:override",
+      description: "Ajustar/recalcular ranking manualmente",
+    },
     { id: "perm-user-manage", key: "user:manage", description: "Gerenciar usuários e papéis" },
   ];
   for (const permission of permissions) {
-    await prisma.permission.upsert({ where: { id: permission.id }, update: {}, create: permission });
+    await prisma.permission.upsert({
+      where: { id: permission.id },
+      update: {},
+      create: permission,
+    });
   }
 
   for (const permission of permissions) {
@@ -107,7 +126,9 @@ async function seedRolesAndPermissions() {
     });
   }
   await prisma.rolePermission.upsert({
-    where: { roleId_permissionId: { roleId: "role-moderator", permissionId: "perm-question-review" } },
+    where: {
+      roleId_permissionId: { roleId: "role-moderator", permissionId: "perm-question-review" },
+    },
     update: {},
     create: { roleId: "role-moderator", permissionId: "perm-question-review" },
   });
@@ -118,7 +139,10 @@ async function seedRolesAndPermissions() {
 // =============================================================================
 
 const STUDENT_COUNT = 10;
-const studentIds = Array.from({ length: STUDENT_COUNT }, (_, i) => `user-student-${String(i + 1).padStart(2, "0")}`);
+const studentIds = Array.from(
+  { length: STUDENT_COUNT },
+  (_, i) => `user-student-${String(i + 1).padStart(2, "0")}`,
+);
 
 async function seedUsers() {
   await prisma.user.upsert({
@@ -139,8 +163,16 @@ async function seedUsers() {
   });
 
   const teacherUsers = [
-    { id: "user-teacher-01", name: "Prof. Marina Alves", email: "marina.alves@operacaoaprovacao.local" },
-    { id: "user-teacher-02", name: "Prof. Ricardo Souza", email: "ricardo.souza@operacaoaprovacao.local" },
+    {
+      id: "user-teacher-01",
+      name: "Prof. Marina Alves",
+      email: "marina.alves@operacaoaprovacao.local",
+    },
+    {
+      id: "user-teacher-02",
+      name: "Prof. Ricardo Souza",
+      email: "ricardo.souza@operacaoaprovacao.local",
+    },
   ];
   for (const t of teacherUsers) {
     await prisma.user.upsert({
@@ -249,9 +281,24 @@ async function seedTeachers() {
 // =============================================================================
 
 const COURSES = [
-  { contestId: "contest-pm", contestName: "Polícia Militar", courseId: "course-pm", courseTitle: "Curso Completo — Polícia Militar" },
-  { contestId: "contest-gcm", contestName: "Guarda Civil Municipal", courseId: "course-gcm", courseTitle: "Curso Completo — Guarda Civil Municipal" },
-  { contestId: "contest-pp", contestName: "Polícia Penal", courseId: "course-pp", courseTitle: "Curso Completo — Polícia Penal" },
+  {
+    contestId: "contest-pm",
+    contestName: "Polícia Militar",
+    courseId: "course-pm",
+    courseTitle: "Curso Completo — Polícia Militar",
+  },
+  {
+    contestId: "contest-gcm",
+    contestName: "Guarda Civil Municipal",
+    courseId: "course-gcm",
+    courseTitle: "Curso Completo — Guarda Civil Municipal",
+  },
+  {
+    contestId: "contest-pp",
+    contestName: "Polícia Penal",
+    courseId: "course-pp",
+    courseTitle: "Curso Completo — Polícia Penal",
+  },
 ] as const;
 
 async function seedContestsAndCourses() {
@@ -288,12 +335,36 @@ async function seedContestsAndCourses() {
 // =============================================================================
 
 const SUBJECTS = [
-  { id: "subject-portugues", name: "Língua Portuguesa", topics: ["Interpretação de Texto", "Gramática Normativa"] },
-  { id: "subject-matematica", name: "Matemática e Raciocínio Lógico", topics: ["Raciocínio Lógico", "Matemática Básica"] },
-  { id: "subject-dir-constitucional", name: "Direito Constitucional", topics: ["Direitos Fundamentais", "Organização do Estado"] },
-  { id: "subject-dir-penal", name: "Direito Penal", topics: ["Teoria do Crime", "Crimes em Espécie"] },
-  { id: "subject-dir-administrativo", name: "Direito Administrativo", topics: ["Atos Administrativos", "Poderes Administrativos"] },
-  { id: "subject-informatica", name: "Informática", topics: ["Conceitos Básicos", "Segurança da Informação"] },
+  {
+    id: "subject-portugues",
+    name: "Língua Portuguesa",
+    topics: ["Interpretação de Texto", "Gramática Normativa"],
+  },
+  {
+    id: "subject-matematica",
+    name: "Matemática e Raciocínio Lógico",
+    topics: ["Raciocínio Lógico", "Matemática Básica"],
+  },
+  {
+    id: "subject-dir-constitucional",
+    name: "Direito Constitucional",
+    topics: ["Direitos Fundamentais", "Organização do Estado"],
+  },
+  {
+    id: "subject-dir-penal",
+    name: "Direito Penal",
+    topics: ["Teoria do Crime", "Crimes em Espécie"],
+  },
+  {
+    id: "subject-dir-administrativo",
+    name: "Direito Administrativo",
+    topics: ["Atos Administrativos", "Poderes Administrativos"],
+  },
+  {
+    id: "subject-informatica",
+    name: "Informática",
+    topics: ["Conceitos Básicos", "Segurança da Informação"],
+  },
 ] as const;
 
 async function seedSubjectsAndTopics() {
@@ -304,7 +375,10 @@ async function seedSubjectsAndTopics() {
       create: { id: s.id, slug: s.id, name: s.name },
     });
     for (let i = 0; i < s.topics.length; i++) {
-      const topicSlug = s.topics[i]!.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "").replace(/\s+/g, "-");
+      const topicSlug = s.topics[i]!.toLowerCase()
+        .normalize("NFD")
+        .replace(/[̀-ͯ]/g, "")
+        .replace(/\s+/g, "-");
       await prisma.topic.upsert({
         where: { id: `${s.id}-topic-${i + 1}` },
         update: {},
@@ -336,38 +410,183 @@ const MODULES = [
   { id: "module-pm-1", courseId: "course-pm", order: 1, title: "Bloco 1 — Fundamentos" },
   { id: "module-pm-2", courseId: "course-pm", order: 2, title: "Bloco 2 — Legislação Específica" },
   { id: "module-gcm-1", courseId: "course-gcm", order: 1, title: "Bloco 1 — Fundamentos" },
-  { id: "module-gcm-2", courseId: "course-gcm", order: 2, title: "Bloco 2 — Legislação Específica" },
+  {
+    id: "module-gcm-2",
+    courseId: "course-gcm",
+    order: 2,
+    title: "Bloco 2 — Legislação Específica",
+  },
   { id: "module-pp-1", courseId: "course-pp", order: 1, title: "Bloco 1 — Fundamentos" },
   { id: "module-pp-2", courseId: "course-pp", order: 2, title: "Bloco 2 — Legislação Específica" },
 ] as const;
 
 const LESSONS: LessonSeed[] = [
   // course-pm / module-pm-1 (4 aulas)
-  { id: "lesson-pm-01", moduleId: "module-pm-1", order: 1, title: "Português: Interpretação de Texto I", subjectId: "subject-portugues", teacherId: "teacher-02" },
-  { id: "lesson-pm-02", moduleId: "module-pm-1", order: 2, title: "Matemática: Raciocínio Lógico I", subjectId: "subject-matematica", teacherId: "teacher-02" },
-  { id: "lesson-pm-03", moduleId: "module-pm-1", order: 3, title: "Direito Constitucional: Direitos Fundamentais I", subjectId: "subject-dir-constitucional", teacherId: "teacher-01" },
-  { id: "lesson-pm-04", moduleId: "module-pm-1", order: 4, title: "Informática: Conceitos Básicos", subjectId: "subject-informatica", teacherId: "teacher-02" },
+  {
+    id: "lesson-pm-01",
+    moduleId: "module-pm-1",
+    order: 1,
+    title: "Português: Interpretação de Texto I",
+    subjectId: "subject-portugues",
+    teacherId: "teacher-02",
+  },
+  {
+    id: "lesson-pm-02",
+    moduleId: "module-pm-1",
+    order: 2,
+    title: "Matemática: Raciocínio Lógico I",
+    subjectId: "subject-matematica",
+    teacherId: "teacher-02",
+  },
+  {
+    id: "lesson-pm-03",
+    moduleId: "module-pm-1",
+    order: 3,
+    title: "Direito Constitucional: Direitos Fundamentais I",
+    subjectId: "subject-dir-constitucional",
+    teacherId: "teacher-01",
+  },
+  {
+    id: "lesson-pm-04",
+    moduleId: "module-pm-1",
+    order: 4,
+    title: "Informática: Conceitos Básicos",
+    subjectId: "subject-informatica",
+    teacherId: "teacher-02",
+  },
   // course-pm / module-pm-2 (3 aulas)
-  { id: "lesson-pm-05", moduleId: "module-pm-2", order: 1, title: "Direito Penal: Teoria do Crime I", subjectId: "subject-dir-penal", teacherId: "teacher-01" },
-  { id: "lesson-pm-06", moduleId: "module-pm-2", order: 2, title: "Direito Administrativo: Atos Administrativos", subjectId: "subject-dir-administrativo", teacherId: "teacher-01" },
-  { id: "lesson-pm-07", moduleId: "module-pm-2", order: 3, title: "Revisão Comentada — Bloco PM", subjectId: "subject-portugues", teacherId: "teacher-02" },
+  {
+    id: "lesson-pm-05",
+    moduleId: "module-pm-2",
+    order: 1,
+    title: "Direito Penal: Teoria do Crime I",
+    subjectId: "subject-dir-penal",
+    teacherId: "teacher-01",
+  },
+  {
+    id: "lesson-pm-06",
+    moduleId: "module-pm-2",
+    order: 2,
+    title: "Direito Administrativo: Atos Administrativos",
+    subjectId: "subject-dir-administrativo",
+    teacherId: "teacher-01",
+  },
+  {
+    id: "lesson-pm-07",
+    moduleId: "module-pm-2",
+    order: 3,
+    title: "Revisão Comentada — Bloco PM",
+    subjectId: "subject-portugues",
+    teacherId: "teacher-02",
+  },
   // course-gcm / module-gcm-1 (4 aulas)
-  { id: "lesson-gcm-01", moduleId: "module-gcm-1", order: 1, title: "Português: Gramática Normativa", subjectId: "subject-portugues", teacherId: "teacher-02" },
-  { id: "lesson-gcm-02", moduleId: "module-gcm-1", order: 2, title: "Matemática Básica para GCM", subjectId: "subject-matematica", teacherId: "teacher-02" },
-  { id: "lesson-gcm-03", moduleId: "module-gcm-1", order: 3, title: "Direito Constitucional: Organização do Estado", subjectId: "subject-dir-constitucional", teacherId: "teacher-01" },
-  { id: "lesson-gcm-04", moduleId: "module-gcm-1", order: 4, title: "Segurança da Informação Aplicada", subjectId: "subject-informatica", teacherId: "teacher-02" },
+  {
+    id: "lesson-gcm-01",
+    moduleId: "module-gcm-1",
+    order: 1,
+    title: "Português: Gramática Normativa",
+    subjectId: "subject-portugues",
+    teacherId: "teacher-02",
+  },
+  {
+    id: "lesson-gcm-02",
+    moduleId: "module-gcm-1",
+    order: 2,
+    title: "Matemática Básica para GCM",
+    subjectId: "subject-matematica",
+    teacherId: "teacher-02",
+  },
+  {
+    id: "lesson-gcm-03",
+    moduleId: "module-gcm-1",
+    order: 3,
+    title: "Direito Constitucional: Organização do Estado",
+    subjectId: "subject-dir-constitucional",
+    teacherId: "teacher-01",
+  },
+  {
+    id: "lesson-gcm-04",
+    moduleId: "module-gcm-1",
+    order: 4,
+    title: "Segurança da Informação Aplicada",
+    subjectId: "subject-informatica",
+    teacherId: "teacher-02",
+  },
   // course-gcm / module-gcm-2 (3 aulas)
-  { id: "lesson-gcm-05", moduleId: "module-gcm-2", order: 1, title: "Direito Penal: Crimes em Espécie", subjectId: "subject-dir-penal", teacherId: "teacher-01" },
-  { id: "lesson-gcm-06", moduleId: "module-gcm-2", order: 2, title: "Direito Administrativo: Poderes Administrativos", subjectId: "subject-dir-administrativo", teacherId: "teacher-01" },
-  { id: "lesson-gcm-07", moduleId: "module-gcm-2", order: 3, title: "Revisão Comentada — Bloco GCM", subjectId: "subject-matematica", teacherId: "teacher-02" },
+  {
+    id: "lesson-gcm-05",
+    moduleId: "module-gcm-2",
+    order: 1,
+    title: "Direito Penal: Crimes em Espécie",
+    subjectId: "subject-dir-penal",
+    teacherId: "teacher-01",
+  },
+  {
+    id: "lesson-gcm-06",
+    moduleId: "module-gcm-2",
+    order: 2,
+    title: "Direito Administrativo: Poderes Administrativos",
+    subjectId: "subject-dir-administrativo",
+    teacherId: "teacher-01",
+  },
+  {
+    id: "lesson-gcm-07",
+    moduleId: "module-gcm-2",
+    order: 3,
+    title: "Revisão Comentada — Bloco GCM",
+    subjectId: "subject-matematica",
+    teacherId: "teacher-02",
+  },
   // course-pp / module-pp-1 (3 aulas)
-  { id: "lesson-pp-01", moduleId: "module-pp-1", order: 1, title: "Português: Interpretação de Texto II", subjectId: "subject-portugues", teacherId: "teacher-02" },
-  { id: "lesson-pp-02", moduleId: "module-pp-1", order: 2, title: "Direito Constitucional: Direitos Fundamentais II", subjectId: "subject-dir-constitucional", teacherId: "teacher-01" },
-  { id: "lesson-pp-03", moduleId: "module-pp-1", order: 3, title: "Direito Penal: Teoria do Crime II", subjectId: "subject-dir-penal", teacherId: "teacher-01" },
+  {
+    id: "lesson-pp-01",
+    moduleId: "module-pp-1",
+    order: 1,
+    title: "Português: Interpretação de Texto II",
+    subjectId: "subject-portugues",
+    teacherId: "teacher-02",
+  },
+  {
+    id: "lesson-pp-02",
+    moduleId: "module-pp-1",
+    order: 2,
+    title: "Direito Constitucional: Direitos Fundamentais II",
+    subjectId: "subject-dir-constitucional",
+    teacherId: "teacher-01",
+  },
+  {
+    id: "lesson-pp-03",
+    moduleId: "module-pp-1",
+    order: 3,
+    title: "Direito Penal: Teoria do Crime II",
+    subjectId: "subject-dir-penal",
+    teacherId: "teacher-01",
+  },
   // course-pp / module-pp-2 (3 aulas)
-  { id: "lesson-pp-04", moduleId: "module-pp-2", order: 1, title: "Direito Administrativo: Execução Penal", subjectId: "subject-dir-administrativo", teacherId: "teacher-01" },
-  { id: "lesson-pp-05", moduleId: "module-pp-2", order: 2, title: "Raciocínio Lógico Aplicado", subjectId: "subject-matematica", teacherId: "teacher-02" },
-  { id: "lesson-pp-06", moduleId: "module-pp-2", order: 3, title: "Revisão Comentada — Bloco Polícia Penal", subjectId: "subject-informatica", teacherId: "teacher-02" },
+  {
+    id: "lesson-pp-04",
+    moduleId: "module-pp-2",
+    order: 1,
+    title: "Direito Administrativo: Execução Penal",
+    subjectId: "subject-dir-administrativo",
+    teacherId: "teacher-01",
+  },
+  {
+    id: "lesson-pp-05",
+    moduleId: "module-pp-2",
+    order: 2,
+    title: "Raciocínio Lógico Aplicado",
+    subjectId: "subject-matematica",
+    teacherId: "teacher-02",
+  },
+  {
+    id: "lesson-pp-06",
+    moduleId: "module-pp-2",
+    order: 3,
+    title: "Revisão Comentada — Bloco Polícia Penal",
+    subjectId: "subject-informatica",
+    teacherId: "teacher-02",
+  },
 ];
 
 async function seedModulesAndLessons() {
@@ -407,7 +626,9 @@ async function seedModulesAndLessons() {
   }
 
   // Um material por módulo (apostila em PDF da primeira aula do módulo).
-  const firstLessonPerModule = MODULES.map((m) => LESSONS.find((l) => l.moduleId === m.id && l.order === 1)!);
+  const firstLessonPerModule = MODULES.map((m) =>
+    LESSONS.find((l) => l.moduleId === m.id && l.order === 1)!,
+  );
   for (const l of firstLessonPerModule) {
     await prisma.lessonMaterial.upsert({
       where: { id: `material-${l.id}` },
@@ -530,9 +751,9 @@ async function seedLessonProgressAndGamification() {
   for (let i = 0; i < studentIds.length; i++) {
     const userId = studentIds[i]!;
     const courseId = primaryCourseForStudent(i);
-    const courseLessons = LESSONS.filter((l) => MODULES.find((m) => m.id === l.moduleId)?.courseId === courseId).sort(
-      (a, b) => a.order - b.order,
-    );
+    const courseLessons = LESSONS.filter(
+      (l) => MODULES.find((m) => m.id === l.moduleId)?.courseId === courseId,
+    ).sort((a, b) => a.order - b.order);
     const [firstLesson, secondLesson] = courseLessons;
 
     if (firstLesson) {
@@ -763,7 +984,8 @@ async function seedMockExamsAndQuestions() {
       const subject = SUBJECTS[(q - 1) % SUBJECTS.length]!;
       const questionId = `question-${exam.id}-${String(q).padStart(2, "0")}`;
       const correctIndex = (q - 1) % 4;
-      const difficulty = q % 3 === 0 ? Difficulty.HARD : q % 3 === 1 ? Difficulty.EASY : Difficulty.MEDIUM;
+      const difficulty =
+        q % 3 === 0 ? Difficulty.HARD : q % 3 === 1 ? Difficulty.EASY : Difficulty.MEDIUM;
 
       await prisma.question.upsert({
         where: { id: questionId },
@@ -822,7 +1044,11 @@ async function seedMockExamAttempts() {
       (_, q) => `question-${exam.id}-${String(q + 1).padStart(2, "0")}`,
     );
     // ~70% de acerto — determinístico por índice do aluno.
-    const wrongPositions = new Set([i % QUESTIONS_PER_EXAM, (i + 3) % QUESTIONS_PER_EXAM, (i + 6) % QUESTIONS_PER_EXAM]);
+    const wrongPositions = new Set([
+      i % QUESTIONS_PER_EXAM,
+      (i + 3) % QUESTIONS_PER_EXAM,
+      (i + 6) % QUESTIONS_PER_EXAM,
+    ]);
     const correctCount = QUESTIONS_PER_EXAM - wrongPositions.size;
 
     await prisma.mockExamAttempt.upsert({
@@ -878,12 +1104,16 @@ async function seedMockExamAttempts() {
 
   // Uma questão favoritada por dois alunos (caderno de erros / favoritos).
   await prisma.questionFavorite.upsert({
-    where: { userId_questionId: { userId: studentIds[0]!, questionId: "question-mock-exam-pm-01" } },
+    where: {
+      userId_questionId: { userId: studentIds[0]!, questionId: "question-mock-exam-pm-01" },
+    },
     update: {},
     create: { userId: studentIds[0]!, questionId: "question-mock-exam-pm-01" },
   });
   await prisma.questionFavorite.upsert({
-    where: { userId_questionId: { userId: studentIds[1]!, questionId: "question-mock-exam-pm-03" } },
+    where: {
+      userId_questionId: { userId: studentIds[1]!, questionId: "question-mock-exam-pm-03" },
+    },
     update: {},
     create: { userId: studentIds[1]!, questionId: "question-mock-exam-pm-03" },
   });
@@ -1064,16 +1294,76 @@ async function seedBrainstorm() {
 // =============================================================================
 
 const ACHIEVEMENTS = [
-  { id: "ach-primeira-aula", key: "first-lesson-completed", name: "Primeira Vitória", description: "Concluiu a primeira aula.", points: 50 },
-  { id: "ach-modulo-completo", key: "module-completed", name: "Módulo Dominado", description: "Concluiu um módulo inteiro.", points: 150 },
-  { id: "ach-curso-completo", key: "course-completed", name: "Missão Cumprida", description: "Concluiu um curso inteiro.", points: 500 },
-  { id: "ach-sequencia-7", key: "streak-7-days", name: "Constância de Ferro", description: "7 dias seguidos de estudo.", points: 200 },
-  { id: "ach-sequencia-30", key: "streak-30-days", name: "Disciplina de Elite", description: "30 dias seguidos de estudo.", points: 800 },
-  { id: "ach-simulado-nota-alta", key: "mock-exam-high-score", name: "Nota de Aprovado", description: "Simulado com nota acima de 80%.", points: 300 },
-  { id: "ach-100-questoes", key: "100-questions-answered", name: "Caçador de Questões", description: "Respondeu 100 questões.", points: 250 },
-  { id: "ach-flashcard-mestre", key: "flashcard-master", name: "Memória de Aço", description: "50 flashcards revisados.", points: 150 },
-  { id: "ach-meta-diaria-30", key: "daily-goal-30-times", name: "Rotina Vencedora", description: "Bateu a meta diária 30 vezes.", points: 300 },
-  { id: "ach-top-10-ranking", key: "top-10-ranking", name: "Elite do Ranking", description: "Chegou ao Top 10 do ranking geral.", points: 400 },
+  {
+    id: "ach-primeira-aula",
+    key: "first-lesson-completed",
+    name: "Primeira Vitória",
+    description: "Concluiu a primeira aula.",
+    points: 50,
+  },
+  {
+    id: "ach-modulo-completo",
+    key: "module-completed",
+    name: "Módulo Dominado",
+    description: "Concluiu um módulo inteiro.",
+    points: 150,
+  },
+  {
+    id: "ach-curso-completo",
+    key: "course-completed",
+    name: "Missão Cumprida",
+    description: "Concluiu um curso inteiro.",
+    points: 500,
+  },
+  {
+    id: "ach-sequencia-7",
+    key: "streak-7-days",
+    name: "Constância de Ferro",
+    description: "7 dias seguidos de estudo.",
+    points: 200,
+  },
+  {
+    id: "ach-sequencia-30",
+    key: "streak-30-days",
+    name: "Disciplina de Elite",
+    description: "30 dias seguidos de estudo.",
+    points: 800,
+  },
+  {
+    id: "ach-simulado-nota-alta",
+    key: "mock-exam-high-score",
+    name: "Nota de Aprovado",
+    description: "Simulado com nota acima de 80%.",
+    points: 300,
+  },
+  {
+    id: "ach-100-questoes",
+    key: "100-questions-answered",
+    name: "Caçador de Questões",
+    description: "Respondeu 100 questões.",
+    points: 250,
+  },
+  {
+    id: "ach-flashcard-mestre",
+    key: "flashcard-master",
+    name: "Memória de Aço",
+    description: "50 flashcards revisados.",
+    points: 150,
+  },
+  {
+    id: "ach-meta-diaria-30",
+    key: "daily-goal-30-times",
+    name: "Rotina Vencedora",
+    description: "Bateu a meta diária 30 vezes.",
+    points: 300,
+  },
+  {
+    id: "ach-top-10-ranking",
+    key: "top-10-ranking",
+    name: "Elite do Ranking",
+    description: "Chegou ao Top 10 do ranking geral.",
+    points: 400,
+  },
 ] as const;
 
 async function seedAchievements() {
@@ -1212,6 +1502,7 @@ async function main() {
   await seedTeachers();
   await seedContestsAndCourses();
   await seedSubjectsAndTopics();
+  await seedConteudoEstados(prisma);
   await seedModulesAndLessons();
   await seedEnrollments();
   await seedLessonProgressAndGamification();

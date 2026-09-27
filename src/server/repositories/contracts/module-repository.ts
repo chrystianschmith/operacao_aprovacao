@@ -52,6 +52,13 @@ export interface ModuleUpdateInput {
 export interface ModuleRepository {
   /** Busca "crua" (ignora `status`/`deletedAt`) — uso administrativo. */
   findById(id: string): Promise<ModuleEntity | null>;
+  /**
+   * BATCH (performance) — busca crua por vários ids em UMA consulta `WHERE id IN (...)`,
+   * mesma semântica de `findById` (ignora `status`/`deletedAt`). Usado para resolver o
+   * caminho aula→módulo→matéria em agregações (ex.: distribuição de tempo do acompanhamento)
+   * sem N+1.
+   */
+  findByIds(ids: readonly string[]): Promise<ModuleEntity[]>;
   /** Retorna os módulos PUBLICADOS e ativos do curso, ordenados por `order` crescente — trilha
    *  visível ao aluno. */
   listByCourseId(courseId: string): Promise<ModuleEntity[]>;

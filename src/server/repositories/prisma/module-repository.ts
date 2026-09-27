@@ -27,6 +27,11 @@ export class PrismaModuleRepository implements ModuleRepository {
     const row = await prisma.module.findUnique({ where: { id } });
     return row ? map(row) : null;
   }
+  async findByIds(ids: readonly string[]) {
+    if (ids.length === 0) return [];
+    const { prisma } = await import("@/server/db/prisma");
+    return (await prisma.module.findMany({ where: { id: { in: [...ids] } } })).map(map);
+  }
   async listByCourseId(courseId: string) {
     const { prisma } = await import("@/server/db/prisma");
     return (
@@ -46,7 +51,7 @@ export class PrismaModuleRepository implements ModuleRepository {
       })
     ).map(map);
   }
-  
+
   async listByCourseIdForAdmin(courseId: string) {
     const { prisma } = await import("@/server/db/prisma");
     return (await prisma.module.findMany({ where: { courseId }, orderBy: { order: "asc" } })).map(

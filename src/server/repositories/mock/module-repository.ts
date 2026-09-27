@@ -1,4 +1,4 @@
-import { mockModules } from "@/mocks";
+import { allMockModules } from "@/mocks";
 import type {
   ModuleCreateInput,
   ModuleEntity,
@@ -10,7 +10,7 @@ import { mockStore } from "./mock-store";
 /** Implementação mock — seed inicial de `src/mocks/data/modules.ts` (ADR-0011). Estado via
  *  `mockStore` (`./mock-store.ts`) — compartilhado entre instâncias de módulo (Fase 17 — CRUD
  *  administrativo). */
-const store = mockStore<ModuleEntity[]>("module", () => [...mockModules]);
+const store = mockStore<ModuleEntity[]>("module", () => [...allMockModules]);
 const sequence = mockStore<{ value: number }>("module:sequence", () => ({ value: store.length }));
 
 function isVisibleToStudents(module: ModuleEntity): boolean {
@@ -20,6 +20,11 @@ function isVisibleToStudents(module: ModuleEntity): boolean {
 export class MockModuleRepository implements ModuleRepository {
   async findById(id: string): Promise<ModuleEntity | null> {
     return store.find((module) => module.id === id) ?? null;
+  }
+
+  async findByIds(ids: readonly string[]): Promise<ModuleEntity[]> {
+    const wanted = new Set(ids);
+    return store.filter((module) => wanted.has(module.id));
   }
 
   async listByCourseId(courseId: string): Promise<ModuleEntity[]> {
@@ -33,19 +38,20 @@ export class MockModuleRepository implements ModuleRepository {
     const wanted = new Set(courseIds);
     return store
       .filter((module) => wanted.has(module.courseId) && isVisibleToStudents(module))
-      .sort((a, b) => (a.courseId === b.courseId ? a.order - b.order : a.courseId.localeCompare(b.courseId)));
+      .sort((a, b) =>
+        a.courseId === b.courseId ? a.order - b.order : a.courseId.localeCompare(b.courseId),
+      );
   }
 
   async listByCourseIdForAdmin(courseId: string): Promise<ModuleEntity[]> {
-    return store
-      .filter((module) => module.courseId === courseId)
-      .sort((a, b) => a.order - b.order);
+    return store.filter((module) => module.courseId === courseId).sort((a, b) => a.order - b.order);
   }
 
   async create(input: ModuleCreateInput): Promise<ModuleEntity> {
     sequence.value += 1;
     const siblings = store.filter((module) => module.courseId === input.courseId);
-    const nextOrder = input.order ?? siblings.reduce((max, module) => Math.max(max, module.order), 0) + 1;
+    const nextOrder =
+      input.order ?? siblings.reduce((max, module) => Math.max(max, module.order), 0) + 1;
     const created: ModuleEntity = {
       id: `module-mock-${sequence.value}`,
       courseId: input.courseId,
@@ -109,6 +115,6 @@ export class MockModuleRepository implements ModuleRepository {
 
 /** Uso exclusivo de testes — restaura o store mock ao seed original. */
 export function __resetMockModuleStore(): void {
-  store.splice(0, store.length, ...mockModules);
+  store.splice(0, store.length, ...allMockModules);
   sequence.value = store.length;
 }

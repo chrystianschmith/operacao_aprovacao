@@ -8,12 +8,21 @@ import { ProgressBar } from "@/components/shared/progress-bar";
 import { ModuleStatusBadge } from "@/components/courses/lesson-status";
 import { VictoryDialog } from "@/components/lessons/victory-dialog";
 import { parseActionResultResponse } from "@/lib/fetch-action-result";
+import { parseVideoSource } from "@/lib/video-source";
+import {
+  YouTubeVideoPlayer,
+  type YouTubeSignals,
+  type YouTubeVideoPlayerHandle,
+} from "@/components/lessons/youtube-video-player";
 import {
   heartbeatResultDTOSchema,
   type HeartbeatInput,
   type LessonCompletionDTO,
 } from "@/contracts/progress";
 import type { LessonStatus } from "@/contracts/courses";
+
+/** Sinais brutos de reprodução, comuns a `<video>` e YouTube (CLAUDE.md §13). */
+type PlaybackSignals = YouTubeSignals;
 
 /**
  * Cadência do heartbeat periódico enquanto o vídeo está tocando (enunciado da Fase 7:
@@ -65,9 +74,15 @@ export function LessonPlayer({
 }: LessonPlayerProps) {
   const router = useRouter();
   const videoRef = useRef<HTMLVideoElement>(null);
+  const youtubeRef = useRef<YouTubeVideoPlayerHandle>(null);
   const intervalRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const resumeAppliedRef = useRef(false);
   const hadErrorRef = useRef(false);
+
+  // Roteia entre o `<video>` nativo e o embed do YouTube conforme a URL da aula
+  // (CLAUDE.md §12). O restante da página (heartbeat, progresso, vitória) segue idêntico.
+  const source = parseVideoSource(videoUrl);
+  const isYoutube = source?.kind === "youtube";
 
   // Um `sessionId` novo por montagem do player — agrupa os heartbeats desta reprodução
   // (docs/ARCHITECTURE.md §5). Gerado uma única vez, nunca recalculado durante a sessão.
@@ -79,24 +94,40 @@ export function LessonPlayer({
   const [victoryData, setVictoryData] = useState<LessonCompletionDTO | null>(null);
   const [victoryOpen, setVictoryOpen] = useState(false);
 
-  // Monta os SINAIS BRUTOS a partir do estado atual do player — nunca calcula percentual/
+  // Lê os SINAIS BRUTOS do player ativo (`<video>` ou YouTube) — nunca calcula percentual/
   // tempo/"concluído". Devolve `null` enquanto a duração ainda não está disponível.
-  const buildHeartbeatPayload = useCallback((): HeartbeatInput | null => {
+  const readPlaybackSignals = useCallback((): PlaybackSignals | null => {
+    if (isYoutube) {
+      return youtubeRef.current?.getSignals() ?? null;
+    }
     const video = videoRef.current;
     if (!video || !Number.isFinite(video.duration) || video.duration <= 0) {
       return null;
     }
     return {
-      lessonId,
-      sessionId,
       positionSeconds: video.currentTime,
       durationSeconds: video.duration,
       playing: !video.paused && !video.ended,
-      tabVisible: document.visibilityState === "visible",
       playbackRate: video.playbackRate,
+    };
+  }, [isYoutube]);
+
+  const buildHeartbeatPayload = useCallback((): HeartbeatInput | null => {
+    const signals = readPlaybackSignals();
+    if (!signals) {
+      return null;
+    }
+    return {
+      lessonId,
+      sessionId,
+      positionSeconds: signals.positionSeconds,
+      durationSeconds: signals.durationSeconds,
+      playing: signals.playing,
+      tabVisible: document.visibilityState === "visible",
+      playbackRate: signals.playbackRate,
       clientTimestamp: Date.now(),
     };
-  }, [lessonId, sessionId]);
+  }, [lessonId, sessionId, readPlaybackSignals]);
 
   const sendHeartbeat = useCallback(async () => {
     const payload = buildHeartbeatPayload();
@@ -191,9 +222,35 @@ export function LessonPlayer({
     }, HEARTBEAT_INTERVAL_MS);
   }, [clearHeartbeatInterval, sendHeartbeat]);
 
+  // handlers comuns de reprodução, compartilhados pelo `<video>` (via eventos DOM) e pelo
+  // YouTube (via callbacks do IFrame Player API) — mesma cadência de heartbeat.
+  const handlePlay = useCallback(() => {
+    startHeartbeatInterval();
+    void sendHeartbeat();
+  }, [sendHeartbeat, startHeartbeatInterval]);
+
+  const handlePauseOrEnded = useCallback(() => {
+    clearHeartbeatInterval();
+    void sendHeartbeat();
+  }, [clearHeartbeatInterval, sendHeartbeat]);
+
+  const handleSeeked = useCallback(() => {
+    void sendHeartbeat();
+  }, [sendHeartbeat]);
+
+  const handleRateChange = useCallback((rate?: number) => {
+    if (rate !== undefined) {
+      setPlaybackRate(rate);
+    } else {
+      const video = videoRef.current;
+      if (video) setPlaybackRate(video.playbackRate);
+    }
+    void sendHeartbeat();
+  }, [sendHeartbeat]);
+
   useEffect(() => {
     const video = videoRef.current;
-    if (!video) return;
+    if (!video || isYoutube) return;
 
     function handleLoadedMetadata() {
       if (resumeAppliedRef.current || !video) return;
@@ -203,42 +260,12 @@ export function LessonPlayer({
       }
     }
 
-    function handlePlay() {
-      startHeartbeatInterval();
-      void sendHeartbeat();
-    }
-
-    function handlePauseOrEnded() {
-      clearHeartbeatInterval();
-      void sendHeartbeat();
-    }
-
-    function handleSeeked() {
-      void sendHeartbeat();
-    }
-
-    function handleRateChange() {
-      if (video) setPlaybackRate(video.playbackRate);
-      void sendHeartbeat();
-    }
-
-    function handleVisibilityChange() {
-      // Ao esconder a aba, faz um flush robusto (sobrevive a fechar/navegar); ao voltar a
-      // ficar visível, um heartbeat normal basta.
-      if (document.visibilityState === "hidden") {
-        flushHeartbeat();
-      } else {
-        void sendHeartbeat();
-      }
-    }
-
     video.addEventListener("loadedmetadata", handleLoadedMetadata);
     video.addEventListener("play", handlePlay);
     video.addEventListener("pause", handlePauseOrEnded);
     video.addEventListener("ended", handlePauseOrEnded);
     video.addEventListener("seeked", handleSeeked);
-    video.addEventListener("ratechange", handleRateChange);
-    document.addEventListener("visibilitychange", handleVisibilityChange);
+    video.addEventListener("ratechange", () => handleRateChange());
 
     return () => {
       video.removeEventListener("loadedmetadata", handleLoadedMetadata);
@@ -246,25 +273,48 @@ export function LessonPlayer({
       video.removeEventListener("pause", handlePauseOrEnded);
       video.removeEventListener("ended", handlePauseOrEnded);
       video.removeEventListener("seeked", handleSeeked);
-      video.removeEventListener("ratechange", handleRateChange);
-      document.removeEventListener("visibilitychange", handleVisibilityChange);
+      video.removeEventListener("ratechange", () => handleRateChange());
       clearHeartbeatInterval();
       // Flush final ao desmontar (navegação SPA/fechar) — captura os últimos ≤10s.
       flushHeartbeat();
     };
   }, [
+    isYoutube,
     resumePositionSeconds,
-    sendHeartbeat,
-    startHeartbeatInterval,
+    handlePlay,
+    handlePauseOrEnded,
+    handleSeeked,
+    handleRateChange,
     clearHeartbeatInterval,
     flushHeartbeat,
   ]);
 
+  // handleVisibilityChange é independente do tipo de player (document-level), por isso fica
+  // fora do efeito do `<video>` — também cobre o YouTube. Fonte do flush: o documento.
+  useEffect(() => {
+    function handleVisibilityChange() {
+      // Ao esconder a aba, faz um flush robusto (sobrevive a fechar/navegar); ao voltar a
+      // ficar visível, um heartbeat normal basta. Fonte: o documento.
+      if (document.visibilityState === "hidden") {
+        flushHeartbeat();
+      } else {
+        void sendHeartbeat();
+      }
+    }
+
+    document.addEventListener("visibilitychange", handleVisibilityChange);
+    return () => document.removeEventListener("visibilitychange", handleVisibilityChange);
+  }, [flushHeartbeat, sendHeartbeat]);
+
   function handlePlaybackRateChange(event: ChangeEvent<HTMLSelectElement>) {
     const rate = Number(event.target.value);
-    const video = videoRef.current;
-    if (video) {
-      video.playbackRate = rate;
+    if (isYoutube) {
+      youtubeRef.current?.setPlaybackRate(rate);
+    } else {
+      const video = videoRef.current;
+      if (video) {
+        video.playbackRate = rate;
+      }
     }
     setPlaybackRate(rate);
   }
@@ -273,7 +323,18 @@ export function LessonPlayer({
     <div className="space-y-4">
       {mediaError ? <p role="alert" className="text-sm">Não foi possível carregar o vídeo ou o acesso expirou. <button className="underline" onClick={() => { window.location.reload(); }}>Recarregar aula</button></p> : null}
       <div className="border-border relative aspect-video w-full overflow-hidden rounded-lg border bg-black">
-        {videoUrl ? (
+        {isYoutube && source?.kind === "youtube" ? (
+          <YouTubeVideoPlayer
+            ref={youtubeRef}
+            videoId={source.videoId}
+            resumePositionSeconds={resumePositionSeconds}
+            onPlay={handlePlay}
+            onPause={handlePauseOrEnded}
+            onEnded={handlePauseOrEnded}
+            onRateChange={(rate) => handleRateChange(rate)}
+            onError={() => setMediaError(true)}
+          />
+        ) : videoUrl ? (
           <video
             ref={videoRef}
             onError={() => setMediaError(true)}

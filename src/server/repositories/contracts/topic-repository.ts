@@ -33,6 +33,12 @@ export interface TopicRepository {
   listBySubjectId(subjectId: string): Promise<TopicEntity[]>;
   /** Só assuntos ativos (`deletedAt: null`). */
   list(): Promise<TopicEntity[]>;
+  /**
+   * BATCH (performance) — assuntos ativos por id, em UMA consulta `WHERE id IN (...)`.
+   * Mesmo padrão de `SubjectRepository.listByIds` — usado para resolver nomes de assunto em
+   * listagens agregadas (ex.: `buildQuestionsData` no acompanhamento) sem N+1.
+   */
+  listByIds(ids: string[]): Promise<TopicEntity[]>;
   /** Fase 17 (admin) — TODOS os assuntos, incluindo soft-deleted. */
   listForAdmin(): Promise<TopicEntity[]>;
   create(input: TopicCreateInput): Promise<TopicEntity>;

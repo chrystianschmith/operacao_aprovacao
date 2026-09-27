@@ -25,6 +25,11 @@ export class PrismaLessonRepository implements LessonRepository {
     const row = await prisma.lesson.findUnique({ where: { id } });
     return row ? map(row) : null;
   }
+  async findByIds(ids: readonly string[]) {
+    if (ids.length === 0) return [];
+    const { prisma } = await import("@/server/db/prisma");
+    return (await prisma.lesson.findMany({ where: { id: { in: [...ids] } } })).map(map);
+  }
   async listByModuleId(moduleId: string) {
     const { prisma } = await import("@/server/db/prisma");
     return (
@@ -44,7 +49,7 @@ export class PrismaLessonRepository implements LessonRepository {
       })
     ).map(map);
   }
-    
+
   async listByModuleIdForAdmin(moduleId: string) {
     const { prisma } = await import("@/server/db/prisma");
     return (await prisma.lesson.findMany({ where: { moduleId }, orderBy: { order: "asc" } })).map(

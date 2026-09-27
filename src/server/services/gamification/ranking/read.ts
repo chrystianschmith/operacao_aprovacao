@@ -5,7 +5,12 @@ import { requireUser } from "@/server/authorization";
 import { getRepositories } from "@/server/repositories";
 import type { RankingScoreEntity } from "@/server/repositories/contracts/ranking-score-repository";
 import { computeLevel } from "../levels";
-import { buildPeriodWindow, buildScopeKey, type RankingPeriodType, type RankingScopeType } from "./scope";
+import {
+  buildPeriodWindow,
+  buildScopeKey,
+  type RankingPeriodType,
+  type RankingScopeType,
+} from "./scope";
 
 /**
  * Leitura do ranking (Fase 9 — agente `gamification`, CLAUDE.md §17). SÓ lê `RankingScore`
@@ -117,10 +122,9 @@ interface ResolvedRankingIdentity {
  * pendência da Fase 9, ver TODO histórico em `mockRankingParticipants`): usuários com `Profile`
  * real (`ProfileRepository`) têm as flags e os campos que elas mascaram vindos de lá +
  * `UserRepository.name` (nome real, editável em "Meu perfil"); usuários SEM `Profile` (dataset
- * fictício de demonstração) caem para `mockRankingParticipants` como antes. Os perfis vêm em
- * LOTE (`findByUserIds`); o nome real (`UserRepository.findById`) ainda é resolvido um a um —
- * N+1 aceitável só no mock em memória. TODO(Fase de banco): resolver o nome por
- * `include: { user: true }`/lote no `PrismaProfileRepository` (ver pendência lá).
+ * fictício de demonstração) caem para `mockRankingParticipants` como antes. Perfis já vêm em
+ * LOTE (`findByUserIds`); o nome real agora também (`findByIds`) — antes era `findById` por
+ * perfil (N+1), custoso no Prisma com a página de ranking real preenchida por usuários reais.
  */
 async function resolveRankingIdentities(
   userIds: readonly string[],
@@ -128,13 +132,18 @@ async function resolveRankingIdentities(
 ): Promise<Map<string, ResolvedRankingIdentity>> {
   const repos = getRepositories();
   const profiles = await repos.profiles.findByUserIds(userIds);
+  const usersById = new Map(
+    (await repos.users.findByIds(profiles.map((profile) => profile.userId))).map(
+      (user) => [user.id, user] as const,
+    ),
+  );
   const resolved = new Map<string, ResolvedRankingIdentity>();
 
   for (const profile of profiles) {
-    const user = await repos.users.findById(profile.userId);
+    const user = usersById.get(profile.userId);
     if (!user || !user.isActive || user.deletedAt) continue;
     resolved.set(profile.userId, {
-      displayName: user?.name ?? anonymizedRankingName(profile.userId),
+      displayName: user.name ?? anonymizedRankingName(profile.userId),
       avatarUrl: profile.avatarUrl,
       city: profile.city,
       state: profile.state,
@@ -148,7 +157,7 @@ async function resolveRankingIdentities(
   }
 
   for (const userId of userIds) {
-    if (resolved.has(userId) || profiles.some(profile => profile.userId === userId)) continue; // já resolvido via Profile real acima
+    if (resolved.has(userId) || profiles.some((profile) => profile.userId === userId)) continue; // já resolvido via Profile real acima
     const participant = participantsById.get(userId);
     if (!participant) continue; // sem Profile E sem participante mock => fail-closed (ver uso)
     resolved.set(userId, {
@@ -175,7 +184,10 @@ function toEntryDTO(
   previousRankByUser: ReadonlyMap<string, number | null>,
   isSelf: boolean,
 ): RankingListEntryDTO {
-  const displayName = isSelf || !identity || identity.showRealName ? (identity?.displayName ?? row.userId) : anonymizedRankingName(row.userId);
+  const displayName =
+    isSelf || !identity || identity.showRealName
+      ? (identity?.displayName ?? row.userId)
+      : anonymizedRankingName(row.userId);
   const showLocation = isSelf || !identity || identity.showCityState;
   const showHours = isSelf || identity?.showStudyHours === true;
   const showPerformance = isSelf || identity?.showPerformance === true;
@@ -246,7 +258,13 @@ export async function getRanking(input: GetRankingInput): Promise<RankingReadRes
     scopeKey,
   );
   if (latestVersion === null) {
-    return emptyResult({ periodType: input.periodType, periodKey: window.periodKey, scopeType: input.scopeType, scopeKey, page });
+    return emptyResult({
+      periodType: input.periodType,
+      periodKey: window.periodKey,
+      scopeType: input.scopeType,
+      scopeKey,
+      page,
+    });
   }
 
   const rows = await repos.rankingScores.listByScopeAndVersion(
@@ -279,7 +297,12 @@ export async function getRanking(input: GetRankingInput): Promise<RankingReadRes
     previousRankByUser = new Map(previousRows.map((row) => [row.userId, row.rank ?? null]));
   }
 
-  const participantsById = new Map((env.DATA_SOURCE === "mock" ? mockRankingParticipants : []).map((participant) => [participant.userId, participant]));
+  const participantsById = new Map(
+    (env.DATA_SOURCE === "mock" ? mockRankingParticipants : []).map((participant) => [
+      participant.userId,
+      participant,
+    ]),
+  );
   // Fase 16: identidade/privacidade resolvida via `Profile` real quando existir, com fallback
   // para `mockRankingParticipants` (ver docstring do arquivo e `resolveRankingIdentities`).
   const identityByUserId = await resolveRankingIdentities(
@@ -361,7 +384,12 @@ export async function getUserRankingPosition(
   const window = buildPeriodWindow(periodType, referenceDate);
   const scopeKey = buildScopeKey(scopeType, scopeKeyRaw);
 
-  const latestVersion = await repos.rankingScores.findLatestVersion(periodType, window.periodKey, scopeType, scopeKey);
+  const latestVersion = await repos.rankingScores.findLatestVersion(
+    periodType,
+    window.periodKey,
+    scopeType,
+    scopeKey,
+  );
   if (latestVersion === null) {
     return null;
   }
@@ -386,5 +414,9 @@ export async function getUserRankingPosition(
     latestVersion,
   );
 
-  return { position: row.rank, totalParticipants: allRows.length, calculationVersion: latestVersion };
+  return {
+    position: row.rank,
+    totalParticipants: allRows.length,
+    calculationVersion: latestVersion,
+  };
 }

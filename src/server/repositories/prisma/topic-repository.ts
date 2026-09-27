@@ -37,6 +37,11 @@ export class PrismaTopicRepository implements TopicRepository {
       await prisma.topic.findMany({ where: { deletedAt: null }, orderBy: { name: "asc" } })
     ).map(map);
   }
+  async listByIds(ids: string[]) {
+    if (ids.length === 0) return [];
+    const { prisma } = await import("@/server/db/prisma");
+    return (await prisma.topic.findMany({ where: { id: { in: ids }, deletedAt: null } })).map(map);
+  }
   async listForAdmin() {
     const { prisma } = await import("@/server/db/prisma");
     return (await prisma.topic.findMany({ orderBy: { name: "asc" } })).map(map);

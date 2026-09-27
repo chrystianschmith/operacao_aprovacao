@@ -89,6 +89,17 @@ export async function getPersistentDashboardData(userId: string) {
     contest,
     ranking,
     nextLesson,
+    // Roteados para fora para o dashboard-service NÃO recalcular sequência/metas uma 2ª vez no
+    // mesmo request (Já recalculadas dentro de `getTrackingOverview` acima — ver duplicação de
+    // `recalculateStreak`/`recalculateDailyGoal`/`recalculateWeeklyGoal` em dashboard-service).
+    streak: {
+      currentStreak: overview.streak.currentStreak,
+      longestStreak: overview.streak.longestStreak,
+      lastActiveDate: overview.streak.lastActiveDate,
+      freezesAvailable: overview.streak.freezesAvailable,
+    },
+    dailyGoal: overview.dailyGoal,
+    weeklyGoal: overview.weeklyGoal,
     study: {
       weeklyStudyMinutes: overview.hours.weekMinutes,
       lessonsCompleted: overview.lessonsCompleted,

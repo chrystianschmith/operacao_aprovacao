@@ -13,6 +13,11 @@ export class MockUserRepository implements UserRepository {
     return store.find((user) => user.id === id && !user.deletedAt) ?? null;
   }
 
+  async findByIds(ids: readonly string[]): Promise<UserEntity[]> {
+    const wanted = new Set(ids);
+    return store.filter((user) => wanted.has(user.id) && !user.deletedAt);
+  }
+
   async findByEmail(email: string): Promise<UserEntity | null> {
     return store.find((user) => user.email === email && !user.deletedAt) ?? null;
   }

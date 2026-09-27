@@ -26,12 +26,12 @@ describe("services/courses — Fase 6", () => {
   });
 
   describe("listCourses", () => {
-    it("lista os 3 cursos do catálogo com matrícula/progresso do usuário anexados", async () => {
+    it("lista os 11 cursos do catálogo com matrícula/progresso do usuário anexados", async () => {
       authMock.mockResolvedValue(fakeSession("aluno", "user-1"));
 
       const courses = await listCourses("user-1");
 
-      expect(courses).toHaveLength(3);
+      expect(courses).toHaveLength(11);
       const enrolledCourse = courses.find((course) => course.id === "course-1");
       expect(enrolledCourse?.enrolled).toBe(true);
       expect(enrolledCourse?.status).toBe("em_andamento");

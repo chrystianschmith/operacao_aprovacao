@@ -23,6 +23,17 @@ export const SUBJECT_IDS = {
   legislacaoTransito: "subject-legislacao-transito",
   atualidades: "subject-atualidades",
   redacao: "subject-redacao",
+  conhecimentosGerais: "subject-conhecimentos-gerais",
+  legislacaoInstitucional: "subject-legislacao-institucional",
+  sistemaPrisional: "subject-sistema-prisional",
+  historia: "subject-historia",
+  geografia: "subject-geografia",
+  fisica: "subject-fisica",
+  quimica: "subject-quimica",
+  primeirosSocorros: "subject-primeiros-socorros",
+  segurancaIncendio: "subject-seguranca-incendio",
+  dirPenalMilitar: "subject-dir-penal-militar",
+  eca: "subject-eca",
 } as const;
 
 /** Seed compacto (id/name) — `deletedAt` (Fase 17) é aplicado uniformemente abaixo. */
@@ -43,6 +54,17 @@ const SUBJECT_SEEDS: ReadonlyArray<Pick<SubjectEntity, "id" | "name">> = [
   { id: SUBJECT_IDS.legislacaoTransito, name: "Legislação de Trânsito" },
   { id: SUBJECT_IDS.atualidades, name: "Atualidades" },
   { id: SUBJECT_IDS.redacao, name: "Redação" },
+  { id: SUBJECT_IDS.conhecimentosGerais, name: "Conhecimentos Gerais e Atualidades" },
+  { id: SUBJECT_IDS.legislacaoInstitucional, name: "Legislação Institucional" },
+  { id: SUBJECT_IDS.sistemaPrisional, name: "Sistema Prisional e Execução Penal" },
+  { id: SUBJECT_IDS.historia, name: "História do Brasil e do Estado" },
+  { id: SUBJECT_IDS.geografia, name: "Geografia do Brasil e do Estado" },
+  { id: SUBJECT_IDS.fisica, name: "Física" },
+  { id: SUBJECT_IDS.quimica, name: "Química" },
+  { id: SUBJECT_IDS.primeirosSocorros, name: "Primeiros Socorros" },
+  { id: SUBJECT_IDS.segurancaIncendio, name: "Segurança, Incêndio e Combate" },
+  { id: SUBJECT_IDS.dirPenalMilitar, name: "Direito Penal Militar" },
+  { id: SUBJECT_IDS.eca, name: "Estatuto da Criança e do Adolescente" },
 ];
 
 export const mockSubjects: SubjectEntity[] = SUBJECT_SEEDS.map((seed) => ({ ...seed, deletedAt: null }));

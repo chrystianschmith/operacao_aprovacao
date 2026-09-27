@@ -154,10 +154,35 @@ interface QuestionsAggregation {
 }
 
 /** Agrega TODO o histórico de `QuestionAttempt` do usuário (simulados + qualquer prática já
- *  registrada) — reaproveita `computePerformance` (Fase 10) para bySubject/byTopic. */
+ *  registrada) — reaproveita `computePerformance` (Fase 10) para bySubject/byTopic.
+ *
+ *  BATCH (performance): em vez de resolver questão/matéria/assunto por tentativa (N+1 — 3
+ *  consultas × N tentativas), resolve tudo em 3 consultas (`questions.findByIds` +
+ *  `subjects.listByIds` + `topics.listByIds`) e agrega por mapa. */
 async function buildQuestionsData(userId: string): Promise<QuestionsAggregation> {
   const repos = getRepositories();
   const attempts = await repos.questionAttempts.listByUserId(userId);
+
+  const questionIds = [...new Set(attempts.map((attempt) => attempt.questionId))];
+  const questionsById = new Map(
+    (await repos.questions.findByIds(questionIds)).map((question) => [question.id, question]),
+  );
+  const subjectIds = [
+    ...new Set([...questionsById.values()].map((question) => question.subjectId)),
+  ];
+  const subjectById = new Map(
+    (await repos.subjects.listByIds(subjectIds)).map((subject) => [subject.id, subject]),
+  );
+  const topicIds = [
+    ...new Set(
+      [...questionsById.values()]
+        .map((question) => question.topicId)
+        .filter((id): id is string => id !== null),
+    ),
+  ];
+  const topicById = new Map(
+    (await repos.topics.listByIds(topicIds)).map((topic) => [topic.id, topic]),
+  );
 
   const entries: PerformanceEntry[] = [];
   const subjectNameById = new Map<string, string>();
@@ -175,14 +200,10 @@ async function buildQuestionsData(userId: string): Promise<QuestionsAggregation>
       timeSpentCount += 1;
     }
 
-    const question = await repos.questions.findById(attempt.questionId);
+    const question = questionsById.get(attempt.questionId);
     if (!question) continue;
-    const [subject, topic] = await Promise.all([
-      repos.subjects.findById(question.subjectId),
-      question.topicId ? repos.topics.findById(question.topicId) : Promise.resolve(null),
-    ]);
 
-    const subjectName = subject?.name ?? "—";
+    const subjectName = subjectById.get(question.subjectId)?.name ?? "—";
     if (!subjectNameById.has(question.subjectId))
       subjectNameById.set(question.subjectId, subjectName);
 
@@ -190,7 +211,7 @@ async function buildQuestionsData(userId: string): Promise<QuestionsAggregation>
       subjectId: question.subjectId,
       subjectName,
       topicId: question.topicId,
-      topicName: topic?.name ?? null,
+      topicName: question.topicId ? (topicById.get(question.topicId)?.name ?? null) : null,
       isCorrect: attempt.isCorrect,
     });
   }
@@ -214,38 +235,55 @@ async function buildQuestionsData(userId: string): Promise<QuestionsAggregation>
 
 /** Distribuição do tempo válido de estudo por matéria — resolve `StudySession.lessonId` até a
  *  matéria via `Lesson.moduleId` → `Module.subjectId` (mesma cadeia usada em outros domínios,
- *  ex.: `@/server/services/study-plan/mappers`). */
+ *  ex.: `@/server/services/study-plan/mappers`).
+ *
+ *  BATCH (performance): a resolução aula→módulo→matéria (antes `lessons.findById` +
+ *  `modules.findById` POR sessão sem `subjectId`) e os nomes de matéria são feitos em lote —
+ *  O(1 consulta por entidade) em vez de N+1. */
 async function buildTimeDistribution(
   sessions: readonly StudyActivitySample[],
 ): Promise<TrackingTimeDistributionEntryDTO[]> {
   const repos = getRepositories();
-  const secondsBySubject = new Map<string, number>();
-  const subjectIdByLessonId = new Map<string, string | null>();
 
+  const pendingLessonIds = [
+    ...new Set(
+      sessions
+        .filter((session) => session.validSeconds > 0 && !session.subjectId && session.lessonId)
+        .map((session) => session.lessonId!),
+    ),
+  ];
+  const lessonsById = new Map(
+    (await repos.lessons.findByIds(pendingLessonIds)).map((lesson) => [lesson.id, lesson] as const),
+  );
+  const moduleIds = [...new Set([...lessonsById.values()].map((lesson) => lesson.moduleId))];
+  const modulesById = new Map(
+    (await repos.modules.findByIds(moduleIds)).map((module) => [module.id, module] as const),
+  );
+
+  const secondsBySubject = new Map<string, number>();
   for (const session of sessions) {
     if (session.validSeconds <= 0) continue;
 
     let subjectId = session.subjectId;
     if (!subjectId && session.lessonId) {
-      subjectId = subjectIdByLessonId.get(session.lessonId) ?? null;
-      if (!subjectId) {
-        const lesson = await repos.lessons.findById(session.lessonId);
-        const courseModule = lesson ? await repos.modules.findById(lesson.moduleId) : null;
-        subjectId = courseModule?.subjectId ?? null;
-        subjectIdByLessonId.set(session.lessonId, subjectId);
-      }
+      const lesson = lessonsById.get(session.lessonId);
+      const courseModule = lesson ? modulesById.get(lesson.moduleId) : null;
+      subjectId = courseModule?.subjectId ?? null;
     }
     if (!subjectId) continue;
 
     secondsBySubject.set(subjectId, (secondsBySubject.get(subjectId) ?? 0) + session.validSeconds);
   }
 
+  const subjectIds = [...secondsBySubject.keys()];
+  const subjectById = new Map(
+    (await repos.subjects.listByIds(subjectIds)).map((subject) => [subject.id, subject]),
+  );
   const entries: TrackingTimeDistributionEntryDTO[] = [];
   for (const [subjectId, seconds] of secondsBySubject) {
-    const subject = await repos.subjects.findById(subjectId);
     entries.push({
       subjectId,
-      subjectName: subject?.name ?? "—",
+      subjectName: subjectById.get(subjectId)?.name ?? "—",
       minutes: Math.floor(seconds / 60),
     });
   }

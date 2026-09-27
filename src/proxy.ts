@@ -86,6 +86,9 @@ export default auth((request) => {
     "font-src 'self'",
     "connect-src 'self'",
     "media-src 'self' https: blob:",
+    // Embed de vídeo-aulas do YouTube (reprodução via iframe youtube-nocookie, permitindo
+    // apenas o domínio de embed; o conteúdo interno é regido pela própria CSP do YouTube).
+    "frame-src https://www.youtube-nocookie.com https://www.youtube.com",
     "frame-ancestors 'none'",
     "base-uri 'self'",
     "form-action 'self'",

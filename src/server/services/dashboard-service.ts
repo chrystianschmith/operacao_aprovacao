@@ -72,15 +72,24 @@ export async function getStudentDashboard(userId: string): Promise<DashboardDTO>
   // (redundante, mas seguro e barato).
   const gamification = await getUserGamification(userId);
 
-  // Fonte real de sequência/metas (Fase 12) — recalcula e persiste a partir de
-  // `StudySession`/`PointTransaction` (nunca `Date.now()` aqui; `now` é a única leitura do
-  // relógio real desta função, injetada explicitamente nos três serviços).
-  const now = new Date();
-  const [streak, dailyGoal, weeklyGoal] = await Promise.all([
-    recalculateStreak(userId, now),
-    recalculateDailyGoal(userId, now),
-    recalculateWeeklyGoal(userId, now),
-  ]);
+  // Fonte real de sequência/metas (Fase 12). No modo Prisma, `getPersistentDashboardData` já
+  // disparou `recalculateStreak`/`recalculateDailyGoal`/`recalculateWeeklyGoal` DENTRO de
+  // `getTrackingOverview` — recalcular aqui seria trabalho duplicado (2ª passada de recálculo
+  // persistido + 2× `listUserActivitySamples` no mesmo request). Reutilizamos os valores já
+  // persistidos; só o modo mock (sem banco) recalcula aqui.
+  const recomputed =
+    persistent === null
+      ? await Promise.all([
+          recalculateStreak(userId, new Date()),
+          recalculateDailyGoal(userId, new Date()),
+          recalculateWeeklyGoal(userId, new Date()),
+        ])
+      : null;
+  const streak = recomputed
+    ? { currentStreak: recomputed[0].currentStreak }
+    : { currentStreak: persistent!.streak.currentStreak };
+  const dailyGoal: GoalLike = recomputed ? recomputed[1] : persistent!.dailyGoal;
+  const weeklyGoal: GoalLike = recomputed ? recomputed[2] : persistent!.weeklyGoal;
 
   const nextLessonEntity = persistent ? null : mockNextLessons[userId];
   let nextLesson: DashboardDTO["nextLesson"] = persistent?.nextLesson ?? null;

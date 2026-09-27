@@ -39,6 +39,13 @@ export interface UserCredentials extends Pick<
 /** Abstração de persistência para usuários (ADR-0002). */
 export interface UserRepository {
   findById(id: string): Promise<UserEntity | null>;
+  /**
+   * BATCH (performance) — vários usuários de uma vez, em UMA consulta `WHERE id IN (...)`.
+   * Usado para resolver identidade/nome em listagens agregadas (ex.: identidades real do
+   * ranking, `@/server/services/gamification/ranking/read.ts`) sem N+1. Respeita o mesmo
+   * filtro de `findById` (`deletedAt: null`).
+   */
+  findByIds(ids: readonly string[]): Promise<UserEntity[]>;
   findByEmail(email: string): Promise<UserEntity | null>;
   findCredentialsByEmail(email: string): Promise<UserCredentials | null>;
   list(): Promise<UserEntity[]>;

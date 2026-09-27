@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { auth } from "@/server/auth";
 import { AuthError, ForbiddenError } from "@/server/errors";
 import type { Role, Session } from "@/types";
@@ -11,8 +12,13 @@ import { getRepositories } from "@/server/repositories";
  * (`@/server/auth`). `getCurrentSession`/`requireUser`/`requireRole` são assíncronas porque
  * `auth()` lê a sessão real do request atual; nunca aceitar um `role`/sessão vindo do corpo
  * da requisição ou de qualquer entrada do cliente.
+ *
+ * `getCurrentSession` é embrulhada em `cache()` (React) para deduplicar POR REQUEST: num mesmo
+ * render, layout (`(student)`), topbar, requireUser/app bars e server actions liam a sessão e
+ * reliam o usuário 3–5×; dentro do escopo RSC/Action isso vira UMA chamada a `auth()` + UMA a
+ * `users.findById` por request (fora de escopo React — ex. testes vitest — comporta-se normal).
  */
-export async function getCurrentSession(): Promise<Session | null> {
+export const getCurrentSession = cache(async (): Promise<Session | null> => {
   const authSession = await auth();
   if (!authSession?.user?.id || !authSession.user.role) {
     return null;
@@ -29,7 +35,7 @@ export async function getCurrentSession(): Promise<Session | null> {
     name: user.name,
     email: user.email,
   };
-}
+});
 
 /** Garante que existe uma sessão autenticada. Lança `AuthError` caso contrário. */
 export async function requireUser(): Promise<Session> {

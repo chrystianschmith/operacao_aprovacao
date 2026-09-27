@@ -26,6 +26,17 @@ export class MockTopicRepository implements TopicRepository {
     return store.filter((topic) => topic.deletedAt === null);
   }
 
+  async listByIds(ids: string[]): Promise<TopicEntity[]> {
+    if (ids.length === 0) return [];
+    const wanted = new Set(ids);
+    const byId = new Map(
+      store
+        .filter((topic) => topic.deletedAt === null && wanted.has(topic.id))
+        .map((topic) => [topic.id, topic] as const),
+    );
+    return ids.flatMap((id) => (byId.get(id) !== undefined ? [byId.get(id)!] : []));
+  }
+
   async listForAdmin(): Promise<TopicEntity[]> {
     return [...store];
   }

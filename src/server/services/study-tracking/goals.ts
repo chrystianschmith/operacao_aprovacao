@@ -1,3 +1,4 @@
+import { cache } from "react";
 import { listUserActivitySamples } from "@/server/services/study-tracking/activity-samples";
 import { inRepositoryTransaction } from "@/server/repositories/transaction";
 import { getEffectiveBusinessConfig } from "@/server/services/admin/effective-config";
@@ -54,17 +55,21 @@ export function isGoalAchieved(input: {
 }
 
 /** Soma de `PointTransaction.points` (ledger real da Fase 8 — nunca um valor do cliente),
- *  agrupada por dia civil na timezone informada. */
-async function sumPointsByDate(userId: string, timezone: string): Promise<Map<string, number>> {
-  const repos = getRepositories();
-  const transactions = await repos.pointTransactions.listByUserId(userId);
-  const byDate = new Map<string, number>();
-  for (const transaction of transactions) {
-    const date = toCalendarDateIso(transaction.createdAt, timezone);
-    byDate.set(date, (byDate.get(date) ?? 0) + transaction.points);
-  }
-  return byDate;
-}
+ *  agrupada por dia civil na timezone informada. Embrulhado em `cache()` (React) porque as metas
+ *  diária e semanal somam o MESMO ledger na mesma request — 1 consulta em vez de 2 (idempotente /
+ *  read-only; deduplicado apenas por request RSC, inofensivo fora dele). */
+const sumPointsByDate = cache(
+  async (userId: string, timezone: string): Promise<Map<string, number>> => {
+    const repos = getRepositories();
+    const transactions = await repos.pointTransactions.listByUserId(userId);
+    const byDate = new Map<string, number>();
+    for (const transaction of transactions) {
+      const date = toCalendarDateIso(transaction.createdAt, timezone);
+      byDate.set(date, (byDate.get(date) ?? 0) + transaction.points);
+    }
+    return byDate;
+  },
+);
 
 /**
  * Recalcula a meta DIÁRIA (data = hoje, na timezone informada) a partir do ledger de pontos

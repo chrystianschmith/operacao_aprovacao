@@ -1,4 +1,4 @@
-import { mockLessons } from "@/mocks";
+import { allMockLessons } from "@/mocks";
 import type {
   LessonCreateInput,
   LessonEntity,
@@ -10,7 +10,7 @@ import { mockStore } from "./mock-store";
 /** Implementação mock — seed inicial de `src/mocks/data/modules.ts` (ADR-0011). Estado via
  *  `mockStore` (`./mock-store.ts`) — compartilhado entre instâncias de módulo (Fase 17 — CRUD
  *  administrativo). */
-const store = mockStore<LessonEntity[]>("lesson", () => [...mockLessons]);
+const store = mockStore<LessonEntity[]>("lesson", () => [...allMockLessons]);
 const sequence = mockStore<{ value: number }>("lesson:sequence", () => ({ value: store.length }));
 
 function isVisibleToStudents(lesson: LessonEntity): boolean {
@@ -20,6 +20,11 @@ function isVisibleToStudents(lesson: LessonEntity): boolean {
 export class MockLessonRepository implements LessonRepository {
   async findById(id: string): Promise<LessonEntity | null> {
     return store.find((lesson) => lesson.id === id) ?? null;
+  }
+
+  async findByIds(ids: readonly string[]): Promise<LessonEntity[]> {
+    const wanted = new Set(ids);
+    return store.filter((lesson) => wanted.has(lesson.id));
   }
 
   async listByModuleId(moduleId: string): Promise<LessonEntity[]> {
@@ -33,7 +38,9 @@ export class MockLessonRepository implements LessonRepository {
     const wanted = new Set(moduleIds);
     return store
       .filter((lesson) => wanted.has(lesson.moduleId) && isVisibleToStudents(lesson))
-      .sort((a, b) => (a.moduleId === b.moduleId ? a.order - b.order : a.moduleId.localeCompare(b.moduleId)));
+      .sort((a, b) =>
+        a.moduleId === b.moduleId ? a.order - b.order : a.moduleId.localeCompare(b.moduleId),
+      );
   }
 
   async listByModuleIdForAdmin(moduleId: string): Promise<LessonEntity[]> {
@@ -43,7 +50,8 @@ export class MockLessonRepository implements LessonRepository {
   async create(input: LessonCreateInput): Promise<LessonEntity> {
     sequence.value += 1;
     const siblings = store.filter((lesson) => lesson.moduleId === input.moduleId);
-    const nextOrder = input.order ?? siblings.reduce((max, lesson) => Math.max(max, lesson.order), 0) + 1;
+    const nextOrder =
+      input.order ?? siblings.reduce((max, lesson) => Math.max(max, lesson.order), 0) + 1;
     const created: LessonEntity = {
       id: `lesson-mock-${sequence.value}`,
       moduleId: input.moduleId,
@@ -70,7 +78,8 @@ export class MockLessonRepository implements LessonRepository {
       ...current,
       title: input.title ?? current.title,
       durationMinutes: input.durationMinutes ?? current.durationMinutes,
-      requiresLessonId: input.requiresLessonId === undefined ? current.requiresLessonId : input.requiresLessonId,
+      requiresLessonId:
+        input.requiresLessonId === undefined ? current.requiresLessonId : input.requiresLessonId,
       videoUrl: input.videoUrl === undefined ? current.videoUrl : input.videoUrl,
       teacherId: input.teacherId === undefined ? current.teacherId : input.teacherId,
       status: input.status ?? current.status,
@@ -107,6 +116,6 @@ export class MockLessonRepository implements LessonRepository {
 
 /** Uso exclusivo de testes — restaura o store mock ao seed original. */
 export function __resetMockLessonStore(): void {
-  store.splice(0, store.length, ...mockLessons);
+  store.splice(0, store.length, ...allMockLessons);
   sequence.value = store.length;
 }

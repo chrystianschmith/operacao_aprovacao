@@ -61,6 +61,13 @@ export interface LessonRepository {
   /** Busca "crua" (ignora `status`/`deletedAt`) — uso administrativo e do player (a liberação
    *  sequencial/pré-requisito já é validada pelo service de progresso). */
   findById(id: string): Promise<LessonEntity | null>;
+  /**
+   * BATCH (performance) — busca crua por vários ids em UMA consulta `WHERE id IN (...)`,
+   * mesma semântica de `findById` (ignora `status`/`deletedAt`). Usado para resolver o
+   * caminho aula→módulo→matéria em agregações (ex.: distribuição de tempo do acompanhamento)
+   * sem N+1.
+   */
+  findByIds(ids: readonly string[]): Promise<LessonEntity[]>;
   /** Retorna as aulas PUBLICADAS e ativas do módulo, ordenadas por `order` crescente. */
   listByModuleId(moduleId: string): Promise<LessonEntity[]>;
   /** Fase 17 (admin) — TODAS as aulas do módulo (qualquer `status`, incluindo soft-deleted),

@@ -220,10 +220,16 @@ it("does not expose a retained public profile when its account is no longer avai
     now,
   });
   sessionMock.mockResolvedValue({ userId: "user-2", role: "aluno" });
-  const find = repos.users.findById.bind(repos.users);
+  // A resolução de identidade do ranking passou de `findById` por perfil para o lote
+  // `findByIds` (mesmo filtro `deletedAt: null` — o invariante de segurança continua o mesmo:
+  // conta indisponível/ausente omite a linha). Intercepta-se o método BATCH para simular a
+  // conta de "user-1" sem linha ("não mais disponível").
+  const findByIds = repos.users.findByIds.bind(repos.users);
   const spy = vi
-    .spyOn(repos.users, "findById")
-    .mockImplementation(async (id) => (id === "user-1" ? null : find(id)));
+    .spyOn(repos.users, "findByIds")
+    .mockImplementation(async (ids) =>
+      (await findByIds(ids)).filter((user) => user.id !== "user-1"),
+    );
   const result = await getRanking({
     periodType: "ALL_TIME",
     scopeType: "GLOBAL",

@@ -57,6 +57,16 @@ export class PrismaUserRepository implements UserRepository {
     });
     return user ? toEntity(user) : null;
   }
+  async findByIds(ids: readonly string[]): Promise<UserEntity[]> {
+    if (ids.length === 0) return [];
+    const { prisma } = await import("@/server/db/prisma");
+    return (
+      await prisma.user.findMany({
+        where: { id: { in: [...ids] }, deletedAt: null },
+        select: userSelect,
+      })
+    ).map(toEntity);
+  }
   async findByEmail(email: string): Promise<UserEntity | null> {
     const { prisma } = await import("@/server/db/prisma");
     const user = await prisma.user.findUnique({
