@@ -37,6 +37,20 @@ placeholders longos (≥32 caracteres) para `AUTH_SECRET`/`CRON_SECRET`. O contr
 `demo` como "não deploy" — os gates de produção permanecem intactos nos ambientes reais. Esses
 placeholders servem apenas para a validação local e nunca devem ser usados fora dela.
 
+## Deploy e migrations de produção
+
+O deploy de produção é feito via Vercel CLI autenticado (`vercel deploy --prod`), com as variáveis
+guardadas no ambiente Production do projeto `operacaoaprovacao` (Supabase `wgbmzbblsigjbxtwqhdm`).
+A role de runtime `app_runtime` tem BYPASSRLS, mas **sem privilégio de DDL** — por isso migrations
+devem ser aplicadas com a role `postgres` (dona das tabelas), nunca pelo `migrate deploy` do runtime.
+
+Se o `migrate deploy` falhar em produção com `P3018 / must be owner`, marque a migration de volta
+com `prisma migrate resolve --rolled-back <nome>` (remove o registro de falha e desbloqueia o
+próximo deploy) e aplique via `POSTGRES_URL=… node scripts/apply-migration-0013.mjs` — o helper
+recusa executar se `current_user` não for `postgres` e aplica apenas a `0013`. A string de conexão
+sai do painel Supabase (Project Settings → Database → Connection string), com a senha do usuário
+`postgres`, não a do `app_runtime`.
+
 ## MFA e pagamentos
 
 Produção exige `ADMIN_MFA_REQUIRED=true` e `MFA_ENCRYPTION_KEY` própria (64 caracteres hexadecimais, 32 bytes). O administrador de bootstrap pode entrar para configurar `/seguranca`; operações administrativas ficam bloqueadas até ativação. Guarde a chave fora do banco, junto ao processo seguro de recuperação. Confira [o procedimento MFA](../security/MFA.md).
