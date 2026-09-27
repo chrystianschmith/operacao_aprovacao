@@ -99,14 +99,17 @@ export async function getStudentDashboard(userId: string): Promise<DashboardDTO>
 
   // Conquistas desbloqueadas (ledger real), mais recentes primeiro — só as `unlocked`.
   const recentAchievements = gamification.achievements
-    .filter((achievement) => achievement.unlocked && achievement.unlockedAt !== null)
-    .sort((a, b) => (b.unlockedAt ?? "").localeCompare(a.unlockedAt ?? ""))
+    .filter(
+      (achievement): achievement is typeof achievement & { unlockedAt: string } =>
+        achievement.unlocked && achievement.unlockedAt !== null,
+    )
+    .sort((a, b) => b.unlockedAt.localeCompare(a.unlockedAt))
     .slice(0, 5)
     .map((achievement) => ({
       id: achievement.key,
       name: achievement.name,
       icon: achievement.icon,
-      achievedAt: achievement.unlockedAt as string,
+      achievedAt: achievement.unlockedAt,
     }));
 
   return {

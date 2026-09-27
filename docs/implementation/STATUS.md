@@ -1,10 +1,16 @@
 # Estado da implementação
 
-Atualizado em 14/09/2026 (US/Pacific). Base auditada: `b640716c317e3f20cc15fadb6a74188fc9b58794`. Branch: `codex/saas-production-hardening`.
+Atualizado em 27/09/2026. Base auditada: `f3ef189`. Branch: `main`.
+
+Fonte de verdade vigente do estado do projeto (os docs de produção antigos — por exemplo
+`docs/production/CURRENT_STATE.md` — são **auditoria histórica de 13/09** e descrevem stubs já
+substituídos por implementação real). Validações atuais: 981 testes unit (153 arquivos), lint e
+typecheck verdes, `npm run build:demo` (build de validação local) verde, suíte de integração
+(11 arquivos) rodada no CI com PostgreSQL 18.
 
 ## Entrega local
 
-Os 172 métodos Prisma incompletos foram implementados. Persistência e contratos cobrem conteúdo, matrículas, progresso, simulados, gamificação, estudo, Brainstorm e flashcards. Foram aplicadas doze migrations, de `0000_init` a `0011_billing_checkout_reconciliation`, em PostgreSQL nativo isolado.
+Os 172 métodos Prisma incompletos foram implementados. Persistência e contratos cobrem conteúdo, matrículas, progresso, simulados, gamificação, estudo, Brainstorm e flashcards. Foram aplicadas migrations de `0000_init` a `0013_add_performance_indexes` (RLS na `0012_enable_rls`) em PostgreSQL nativo isolado.
 
 Corrigidos os bloqueadores de autorização atualizada, revogação de sessões, exclusão lógica, limite atômico no provider Credentials, configuração de produção, publicação de conteúdo, privacidade e gravações parciais. Operações de domínio usam unidade transacional, eventos/auditoria duráveis e controle de concorrência compartilhado.
 
@@ -12,15 +18,21 @@ Também entregues: configuração administrativa versionada, ranking atômico co
 
 Cadastro, verificação e recuperação usam tokens de uso único, senha vinculada ao pedido confirmado e fila de e-mail cifrada. Cobrança Stripe é configurável, com webhook assinado/idempotente, portal e reconciliação manual/agendada, além de tratamento de renovação, reembolso integral e disputa. MFA administrativo foi entregue e é exigido pela configuração de produção. PDFs privados e vídeos MP4 privados têm URLs temporárias emitidas após autorização. Serviços externos foram testados com transportes simulados; não houve cobrança nem envio real.
 
+Corrigido em 27/09: os canais de aquisição (`/sales` e variantes) foram adicionados às rotas públicas do `src/proxy.ts` — estavam protegidos por autenticação por engano, bloqueando o acesso anônimo à página de vendas. Cobertura adicionada em `tests/unit/security-headers.test.ts` (regressão de rotas públicas automatizada).
+
+## Produção (deploy de 16/09)
+
+Ambiente Vercel `operacao-aprovacao` está publicado com banco Supabase (`wgbmzbblsigjbxtwqhdm`, plano Free, São Paulo), `APP_ENV=production`, `DATA_SOURCE=prisma`, RLS habilitado, role de runtime `app_runtime` (BYPASSRLS, sem DDL). A migration `0013_add_performance_indexes` (aditiva: índices + `Question.statementHash` opcional) **não foi aplicada no banco de produção** — falhou por falta de privilégio DDL do `app_runtime` e foi marcada como `rolled back` via `prisma migrate resolve`. É 100% aditiva e nenhum código a consome; o deploy não depende dela. Para aplicar é preciso a conexão `postgres` (dono) do painel Supabase — pendência registrada, não bloqueante.
+
 ## Evidências finais
 
 | Verificação                                    | Resultado                                                                                                                                             |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unitários                                      | 872 aprovados, 129 arquivos                                                                                                                           |
-| Integração PostgreSQL                          | 75 aprovados, 11 arquivos (origem e banco restaurado)                                                                                                 |
-| ESLint global                                  | Aprovado                                                                                                                                              |
-| TypeScript / build Next em modo Prisma staging | Aprovados                                                                                                                                             |
-| Diff banco aplicado vs. schema Prisma          | Sem diferenças                                                                                                                                        |
+| Unitários                                      | 981 aprovados, 153 arquivos (27/09/2026)                                                                                                                  |
+| Integração PostgreSQL                          | 11 arquivos (origem e banco restaurado; executados no CI)                                                                                                |
+| ESLint global                                  | Aprovado (27/09/2026)                                                                                                                                      |
+| TypeScript / build Next                        | Aprovados; `npm run build:demo` (validação local, `APP_ENV=demo`) verde                                                                                     |
+| Diff banco aplicado vs. schema Prisma          | Sem diferenças                                                                                                                                            |
 | npm audit                                      | 0 vulnerabilidades conhecidas na árvore verificada                                                                                                    |
 | HTTP no aplicativo compilado                   | Login direto, revogação, limite compartilhado, readiness, métricas protegidas, CSP e MFA aprovados                                                    |
 | Backup/restauração local                       | 60 tabelas, 273 registros; hashes e contagens iguais ao snapshot; suíte de integração executada sobre o destino                                       |

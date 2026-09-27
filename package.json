@@ -6,6 +6,7 @@
     "dev": "next dev",
     "postinstall": "prisma generate",
     "build": "next build",
+    "build:demo": "node scripts/build-demo.mjs",
     "start": "next start",
     "lint": "eslint",
     "typecheck": "tsc --noEmit",

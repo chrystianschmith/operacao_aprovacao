@@ -1,6 +1,6 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import {
   finishFocusInputSchema,
   pomodoroConfigInputSchema,
@@ -8,7 +8,7 @@ import {
   type FocusSessionDTO,
 } from "@/contracts/focus";
 import { requireUser } from "@/server/authorization";
-import { isDomainError, ValidationError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import { finishFocusSession, startFocusSession } from "@/server/services/focus";
 import { parseInput } from "@/server/validation";
 
@@ -26,13 +26,6 @@ import { parseInput } from "@/server/validation";
  * (`@/app/api/progress/heartbeat/route.ts`, Fase 7). Ambos chamam o MESMO service
  * (`@/server/services/focus`) — nenhuma regra duplicada entre as duas fronteiras.
  */
-function toActionError(error: unknown): ActionResult<never> {
-  if (isDomainError(error)) {
-    const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
-    return fail(error.code, error.message, fieldErrors);
-  }
-  return fail("INTERNAL_ERROR", "Não foi possível processar a solicitação.");
-}
 
 /** Inicia uma sessão de Modo Foco para o aluno autenticado (descarta qualquer sessão ativa anterior). */
 export async function startFocusSessionAction(rawInput: unknown): Promise<ActionResult<FocusSessionDTO>> {

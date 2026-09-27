@@ -1,7 +1,7 @@
 "use server";
 import { z } from "zod";
-import { fail, ok, type ActionResult } from "@/contracts/common";
-import { isDomainError } from "@/server/errors";
+import { ok, type ActionResult } from "@/contracts/common";
+import { toActionError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
 import { searchMyContent, type SearchPageDTO } from "@/server/services/navigation/search";
 export async function searchContentAction(raw: unknown): Promise<ActionResult<SearchPageDTO>> {
@@ -15,8 +15,6 @@ export async function searchContentAction(raw: unknown): Promise<ActionResult<Se
     );
     return ok(await searchMyContent(input.query, input.page));
   } catch (error) {
-    return isDomainError(error)
-      ? fail(error.code, error.message)
-      : fail("INTERNAL_ERROR", "Não foi possível realizar a busca.");
+    return toActionError(error, "Não foi possível realizar a busca.");
   }
 }

@@ -1,3 +1,5 @@
+import { fail, type ActionResult } from "@/contracts/common";
+
 /**
  * Erros de domínio (docs/ARCHITECTURE.md, camada "Infra transversal").
  * Toda falha de negócio conhecida deve ser lançada como um desses tipos —
@@ -97,4 +99,25 @@ export function httpStatusForDomainError(error: DomainError): number {
     default:
       return 500;
   }
+}
+
+/**
+ * Mapeia QUALQUER erro lançado na borda de uma Server Action para o envelope `ActionResult`
+ * (docs/ARCHITECTURE.md §6): erros de domínio preservam `code`/`message`/`fieldErrors`;
+ * qualquer outra exceção vira `INTERNAL_ERROR` com mensagem segura — nunca stack trace
+ * (CLAUDE.md §9/§24). ÚNICO ponto de conversão erros→`ActionResult` do projeto; as antigas
+ * cópias locais por arquivo de action (`toActionError`) foram consolidadas aqui.
+ *
+ * `fallbackMessage` permite cada fronteira manter sua mensagem de erro inesperado específica
+ * (ex.: "Não foi possível carregar o dashboard.") sem duplicar o corpo do mapeamento.
+ */
+export function toActionError(
+  error: unknown,
+  fallbackMessage = "Não foi possível processar a solicitação.",
+): ActionResult<never> {
+  if (isDomainError(error)) {
+    const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
+    return fail(error.code, error.message, fieldErrors);
+  }
+  return fail("INTERNAL_ERROR", fallbackMessage);
 }

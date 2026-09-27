@@ -103,7 +103,11 @@ export default async function LessonPage({ params }: LessonPageProps) {
             courseTrackHref={courseTrackHref}
           />
 
-          {lesson.description ? <p className="text-muted-foreground text-sm">{lesson.description}</p> : null}
+          {lesson.description ? (
+            <p className="text-muted-foreground max-w-3xl text-sm leading-relaxed text-pretty">
+              {lesson.description}
+            </p>
+          ) : null}
 
           <div className="space-y-2">
             <h2 className="text-sm font-semibold">Materiais de apoio</h2>

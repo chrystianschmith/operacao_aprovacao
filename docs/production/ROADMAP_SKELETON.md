@@ -1,5 +1,10 @@
 # Esqueleto do Roadmap de Produção — 20 fases (auditoria → produção)
 
+> ⚠️ **Hall permanente (13/09/2026).** Fases 2–16 foram executadas nas revalidações seguintes
+> (repos Prisma reais, migrations até `0013`, MFA, billing, e-mail, storage/vídeo, auth de
+> registro/recuperação, CI com Postgres). Pendente real: camada cloud/comercial. Ver
+> [`docs/implementation/STATUS.md`](../implementation/STATUS.md).
+>
 > Espinha proposta pelo subagente `architect`. O `reviewer` consolida em
 > `PRODUCTION_ROADMAP.md` (detalhando tarefas, critérios de aceite e agentes por fase).
 > Ordem pensada para desbloquear o mínimo antes de ligar Prisma e subir usuários reais.

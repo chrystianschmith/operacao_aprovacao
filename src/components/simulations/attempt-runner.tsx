@@ -66,6 +66,20 @@ export function AttemptRunner({ attempt, initialFavoriteQuestionIds }: AttemptRu
     [totalQuestions],
   );
 
+  // Gestão de foco + anúncio ao navegar entre questões (CLAUDE.md §22): ao ir para a próxima/
+  // anterior, move o foco programático para o rótulo "Questão X de Y" (única navegação por
+  // botão que troca todo o conteúdo da tela) e anuncia a nova posição via aria-live. O rótulo
+  // recebe `tabIndex={-1}` só para viabilizar esse foco — não entra na tabulação normal.
+  const questionLabelRef = useRef<HTMLSpanElement>(null);
+  const [questionAnnouncement, setQuestionAnnouncement] = useState("");
+  const previousIndexRef = useRef(0);
+  useEffect(() => {
+    if (previousIndexRef.current === currentIndex) return;
+    previousIndexRef.current = currentIndex;
+    questionLabelRef.current?.focus();
+    setQuestionAnnouncement(`Questão ${currentIndex + 1} de ${totalQuestions}.`);
+  }, [currentIndex, totalQuestions]);
+
   function handleSelectOption(questionId: string, optionId: string) {
     setAnswers((previous) => ({ ...previous, [questionId]: optionId }));
   }
@@ -163,7 +177,10 @@ export function AttemptRunner({ attempt, initialFavoriteQuestionIds }: AttemptRu
 
   return (
     <div className="space-y-4">
-      <div className="border-border bg-card/40 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3">
+      <div
+        data-testid="attempt-status-bar"
+        className="border-border bg-card sticky top-16 z-20 flex flex-wrap items-center justify-between gap-3 rounded-lg border p-3 shadow-sm"
+      >
         <div>
           <p className="text-foreground text-sm font-semibold">
             {attempt.mockExamTitle ?? "Simulado personalizado"}
@@ -177,15 +194,23 @@ export function AttemptRunner({ attempt, initialFavoriteQuestionIds }: AttemptRu
         <AttemptTimer remainingSeconds={remainingSeconds} />
       </div>
 
+      <div data-testid="attempt-question-announcement" className="sr-only" aria-live="polite">
+        {questionAnnouncement}
+      </div>
+
       <div className="grid gap-4 lg:grid-cols-[1fr_240px]">
         <Card>
           <CardContent className="space-y-5">
             <fieldset className="space-y-4">
               <legend className="text-foreground w-full text-base leading-relaxed font-medium">
-                <span className="text-muted-foreground block text-xs font-normal tracking-wide uppercase">
+                <span
+                  ref={questionLabelRef}
+                  tabIndex={-1}
+                  className="text-muted-foreground block text-xs font-normal tracking-wide uppercase outline-none"
+                >
                   Questão {currentIndex + 1} de {totalQuestions}
                 </span>
-                {currentQuestion.statement}
+                <span className="block break-words">{currentQuestion.statement}</span>
               </legend>
 
               <div className="flex flex-wrap items-center gap-1.5">
@@ -221,8 +246,9 @@ export function AttemptRunner({ attempt, initialFavoriteQuestionIds }: AttemptRu
                         onChange={() => handleSelectOption(currentQuestion.questionId, option.id)}
                         className="accent-primary mt-0.5"
                       />
-                      <span>
-                        <span className="font-semibold">{option.label})</span> {option.text}
+                      <span className="min-w-0">
+                        <span className="font-semibold">{option.label})</span>{" "}
+                        <span className="break-words">{option.text}</span>
                       </span>
                     </label>
                   );

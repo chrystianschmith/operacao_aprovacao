@@ -163,9 +163,17 @@ export const questionResultDTOSchema = z.object({
   topicName: z.string().nullable(),
   board: z.string().nullable(),
   difficulty: questionDifficultySchema,
+  /** Gabarito EXIBIDO ("como está correto hoje") — lido do `QuestionOption` ATUAL da questão.
+   *  Mudanças de gabarito feitas pelo admin APÓS a tentativa aparecem aqui sem reescrever o
+   *  histórico: `selectedOptionId`/`isCorrect`/`correctCount`/`scorePercent` preservam o SNAPSHOT
+   *  da época em que o aluno respondeu (`QuestionAttempt`, gravado em `submitAndFinalize`). */
   options: z.array(resultOptionDTOSchema),
+  /** SNAPSHOT gravado em `QuestionAttempt` no momento da resposta — nunca recalculado contra o
+   *  gabarito atual. `null` = não respondida (não confundir com `false` = respondida errada).
+   *  Uma mudança de gabarito posterior NÃO invalida nem reescreve este acerto/erro. */
   selectedOptionId: idSchema.nullable(),
-  /** `null` = não respondida (não confundir com `false` = respondida errada). */
+  /** SNAPSHOT gravado em `QuestionAttempt` no momento da resposta — nunca recalculado contra o
+   *  gabarito atual. `null` = não respondida. */
   isCorrect: z.boolean().nullable(),
   explanation: z.string().nullable(),
 });
@@ -206,7 +214,10 @@ export const attemptResultDTOSchema = z.object({
   correctCount: z.number().int().min(0),
   wrongCount: z.number().int().min(0),
   blankCount: z.number().int().min(0),
-  /** Percentual 0–100 (convenção de escala, docs/DATA-MODEL.md). */
+  /** Percentual 0–100 (convenção de escala, docs/DATA-MODEL.md). Calculado na finalização
+   *  (`submitAndFinalize` → `computeScorePercent`) com a penalidade configurável
+   *  `SIMULATIONS.negativeMarkingPerWrong` e CONGELADO na tentativa — jamais recalculado contra
+   *  um gabarito alterado depois (histórico de quem respondeu é preservado). */
   scorePercent: z.number().min(0).max(100),
   /** Pontos/XP creditados por esta tentativa (lidos do ledger de gamificação — nunca somados a
    *  partir de um valor do cliente). */

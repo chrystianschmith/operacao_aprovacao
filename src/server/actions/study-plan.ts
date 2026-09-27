@@ -1,6 +1,6 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import {
   generatePlanInputSchema,
   reorderPlanItemsInputSchema,
@@ -14,7 +14,7 @@ import {
   type StartStudyMissionResultDTO,
 } from "@/contracts/study-session";
 import { requireUser } from "@/server/authorization";
-import { isDomainError, ValidationError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import {
   buildSession,
   generatePlan,
@@ -31,14 +31,6 @@ import { parseInput } from "@/server/validation";
  * do Auth.js (nunca de um `userId` vindo do cliente), validam a entrada com Zod e repassam
  * para o service. Mesmo padrão de `@/server/actions/simulations.ts`/`@/server/actions/courses.ts`.
  */
-
-function toActionError(error: unknown): ActionResult<never> {
-  if (isDomainError(error)) {
-    const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
-    return fail(error.code, error.message, fieldErrors);
-  }
-  return fail("INTERNAL_ERROR", "Não foi possível processar a solicitação.");
-}
 
 /** Pré-visualiza uma sessão de estudo gerada a partir do tempo disponível + preferências —
  *  não grava nada (só leitura de conteúdo real dos mocks). */

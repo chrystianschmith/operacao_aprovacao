@@ -19,7 +19,7 @@ export default async function ProfessorCoursePage({
   );
   return (
     <div className="space-y-8">
-      <Link href="/professor-rs" className="text-primary text-sm">
+      <Link href="/professor-rs" className="text-primary text-sm underline-offset-4 hover:underline focus-visible:ring-ring/50 focus-visible:rounded-sm focus-visible:ring-2">
         ← Todos os concursos
       </Link>
       <header className="space-y-3">
@@ -120,18 +120,18 @@ export default async function ProfessorCoursePage({
               </span>
             </summary>
             <article className="mt-6 max-w-3xl space-y-5">
-              <p className="text-sm">Objetivo: {lesson.objectives.join(" ")}</p>
+              <p className="text-pretty text-sm">Objetivo: {lesson.objectives.join(" ")}</p>
               {lesson.sections.map((section, i) => (
                 <section key={i}>
                   <h3 className="mb-2 font-semibold">{section.title}</h3>
-                  <p className="text-muted-foreground leading-7 whitespace-pre-line">
+                  <p className="text-muted-foreground leading-relaxed text-pretty whitespace-pre-line">
                     {section.text}
                   </p>
                 </section>
               ))}
               <section className="bg-muted/50 rounded-lg p-4">
                 <h3 className="mb-2 font-semibold">Exemplo resolvido</h3>
-                <p className="leading-7">{lesson.workedExample}</p>
+                <p className="leading-relaxed text-pretty">{lesson.workedExample}</p>
               </section>
               <section>
                 <h3 className="mb-2 font-semibold">Resumo para revisão</h3>

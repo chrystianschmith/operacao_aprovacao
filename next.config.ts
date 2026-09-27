@@ -31,6 +31,29 @@ const securityHeaders = [
     key: "Strict-Transport-Security",
     value: "max-age=63072000; includeSubDomains; preload",
   },
+  {
+    // Isola o browsing context de janelas cruzadas (mitiga Spectre/XS-Leaks e o vazamento
+    // de `window.opener`). O checkout do Stripe usa redirecionamento de topo, não popup.
+    key: "Cross-Origin-Opener-Policy",
+    value: "same-origin",
+  },
+  {
+    // Impede que outras origens carreguem recursos (documentos, scripts, mídia) desta
+    // aplicação, mesmo quando a CORS policy permitiria.
+    key: "Cross-Origin-Resource-Policy",
+    value: "same-origin",
+  },
+  {
+    // Desativa o prefetch/preconnect automático de DNS — evita vazamento de navegação
+    // para terceiros e reduz superfície de rastreamento.
+    key: "X-DNS-Prefetch-Control",
+    value: "off",
+  },
+  {
+    // Restringe o carregamento de políticas cross-domain (Flash/PDF legados) a nenhuma.
+    key: "X-Permitted-Cross-Domain-Policies",
+    value: "none",
+  },
 ];
 
 const nextConfig: NextConfig = {

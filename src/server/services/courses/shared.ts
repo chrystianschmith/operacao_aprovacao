@@ -1,19 +1,25 @@
 import { getRepositories } from "@/server/repositories";
 import type { CourseEntity } from "@/server/repositories/contracts/course-repository";
 import type { LessonProgressEntity } from "@/server/repositories/contracts/lesson-progress-repository";
+import type { LessonEntity } from "@/server/repositories/contracts/lesson-repository";
 import type { CourseStatus, CourseSummaryDTO } from "@/contracts/courses";
 import { computeCourseProgress, type ComputedCourseProgress, type ModuleWithLessons } from "./progress";
 
-/** Carrega os módulos do curso com suas aulas já anexadas, ordenados (I/O via repositórios). */
+/** Carrega os módulos do curso com suas aulas já anexadas, ordenados (I/O via repositórios).
+ *  BATCH (performance): as aulas de TODOS os módulos são buscadas de uma vez
+ *  (`LessonRepository.listByModuleIds`), eliminando o N+1 de uma aula-por-módulo. Ordenação
+ *  final reproduz `listByModuleId` (módulos por `order`, aulas por `order`). */
 export async function loadModulesWithLessons(courseId: string): Promise<ModuleWithLessons[]> {
   const repos = getRepositories();
   const modules = await repos.modules.listByCourseId(courseId);
-  return Promise.all(
-    modules.map(async (module) => ({
-      module,
-      lessons: await repos.lessons.listByModuleId(module.id),
-    })),
-  );
+  const lessonsByModule = new Map<string, LessonEntity[]>();
+  for (const lesson of await repos.lessons.listByModuleIds(modules.map((module) => module.id)))
+    (lessonsByModule.get(lesson.moduleId) ?? lessonsByModule.set(lesson.moduleId, []).get(lesson.moduleId)!)
+      .push(lesson);
+  return modules.map((module) => ({
+    module,
+    lessons: lessonsByModule.get(module.id) ?? [],
+  }));
 }
 
 /** Progresso do usuário restrito às aulas informadas (evita vazar progresso de outros cursos). */
@@ -44,15 +50,20 @@ export async function computeProgressForCourse(
 }
 
 /** Nomes de matéria (distintos, na ordem dos módulos) cobertos pelo curso. */
+/** Nomes de matéria (distintos, na ordem dos módulos) cobertos pelo curso.
+ *  BATCH (performance): busca as matérias com UMA consulta `WHERE id IN (...)` via
+ *  `SubjectRepository.listByIds`, em vez de uma `findById` por módulo (N+1). */
 export async function resolveSubjectNames(modulesWithLessons: ModuleWithLessons[]): Promise<string[]> {
   const repos = getRepositories();
-  const seen = new Set<string>();
+  const wanted = [
+    ...new Set(modulesWithLessons.map(({ module }) => module.subjectId).filter(Boolean)),
+  ];
+  const subjects = await repos.subjects.listByIds(wanted);
+  const byId = new Map(subjects.map((subject) => [subject.id, subject.name] as const));
   const names: string[] = [];
   for (const { module } of modulesWithLessons) {
-    if (seen.has(module.subjectId)) continue;
-    seen.add(module.subjectId);
-    const subject = await repos.subjects.findById(module.subjectId);
-    if (subject) names.push(subject.name);
+    const name = byId.get(module.subjectId);
+    if (name !== undefined && !names.includes(name)) names.push(name);
   }
   return names;
 }

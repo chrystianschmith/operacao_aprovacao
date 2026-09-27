@@ -26,6 +26,12 @@ export interface SubjectRepository {
   findById(id: string): Promise<SubjectEntity | null>;
   /** Só matérias ativas (`deletedAt: null`). */
   list(): Promise<SubjectEntity[]>;
+  /**
+   * BATCH (performance) — matérias ativas por id, em UMA consulta `WHERE id IN (...)`.
+   * Usado para resolver nomes de matéria em listagens agregadas (simulados/questões) sem N+1.
+   * Ordenação preservada pela ordem de `ids` (mapa id->matéria, não depende do banco).
+   */
+  listByIds(ids: string[]): Promise<SubjectEntity[]>;
   /** Fase 17 (admin) — TODAS as matérias, incluindo soft-deleted. */
   listForAdmin(): Promise<SubjectEntity[]>;
   create(input: SubjectCreateInput): Promise<SubjectEntity>;

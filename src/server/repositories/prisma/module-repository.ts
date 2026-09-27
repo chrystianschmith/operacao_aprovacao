@@ -36,6 +36,17 @@ export class PrismaModuleRepository implements ModuleRepository {
       })
     ).map(map);
   }
+  async listByCourseIds(courseIds: string[]) {
+    if (courseIds.length === 0) return [];
+    const { prisma } = await import("@/server/db/prisma");
+    return (
+      await prisma.module.findMany({
+        where: { courseId: { in: courseIds }, status: "PUBLISHED", deletedAt: null },
+        orderBy: [{ courseId: "asc" }, { order: "asc" }],
+      })
+    ).map(map);
+  }
+  
   async listByCourseIdForAdmin(courseId: string) {
     const { prisma } = await import("@/server/db/prisma");
     return (await prisma.module.findMany({ where: { courseId }, orderBy: { order: "asc" } })).map(

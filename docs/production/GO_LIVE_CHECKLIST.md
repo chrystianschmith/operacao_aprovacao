@@ -12,8 +12,15 @@
 > ([`SECURITY_CHECKLIST.md`](./SECURITY_CHECKLIST.md), [`CLOUDFLARE_PLAN.md`](./CLOUDFLARE_PLAN.md),
 > [`DOMAIN_AND_DNS.md`](./DOMAIN_AND_DNS.md), [`MONITORING_PLAN.md`](./MONITORING_PLAN.md)). Também
 > reflete `CLAUDE.md` §25 (12 cenários de teste obrigatórios) e o estado real do código verificado
-> nesta fase (741 testes Vitest — 105 arquivos, `tests/unit/**` — 100% mocks-first; nenhum teste
-> hoje exercita `PrismaXxxRepository`; sem harness de e2e; sem `.env.test`; sem CI).
+> nesta fase?
+
+> ⚠️ **Checklist acionável ainda válido para o GO-LIVE.** Nota de atualização (27/09/2026): os
+> itens de implementação que o geraram (stubs Prisma, sem auth de registro, sem MFA, sem CI)
+> foram **entregues** nas revalidações de 13–14/09 e etapas seguintes — vide
+> [`docs/implementation/STATUS.md`](../implementation/STATUS.md) e
+> [`REVALIDACAO-2026-09-14.md`](../implementation/REVALIDACAO-2026-09-14.md). O que permanece
+> pendente aqui é a **camada operacional externa** (provisionamento de cloud, domínio, provedores
+> reais, monitoramento e ensaio de restore na nuvem), não código.
 >
 > **Documento de planejamento — nenhum teste foi criado, nenhuma migration rodou, nenhum código foi
 > alterado nesta fase.** É o checklist a executar, não uma auditoria de algo já feito.

@@ -1,7 +1,7 @@
 "use server";
 import { z } from "zod";
-import { fail, ok, type ActionResult, idSchema } from "@/contracts/common";
-import { isDomainError } from "@/server/errors";
+import { ok, type ActionResult, idSchema } from "@/contracts/common";
+import { toActionError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
 import {
   listMyNotifications,
@@ -15,9 +15,7 @@ export async function listMyNotificationsAction(
     const input = parseInput(z.object({ page: z.number().int().min(1).default(1) }), raw);
     return ok(await listMyNotifications(input.page));
   } catch (error) {
-    return isDomainError(error)
-      ? fail(error.code, error.message)
-      : fail("INTERNAL_ERROR", "Não foi possível carregar as notificações.");
+    return toActionError(error, "Não foi possível carregar as notificações.");
   }
 }
 export async function markNotificationReadAction(raw: unknown): Promise<ActionResult<null>> {
@@ -26,8 +24,6 @@ export async function markNotificationReadAction(raw: unknown): Promise<ActionRe
     await markMyNotificationRead(input.id);
     return ok(null);
   } catch (error) {
-    return isDomainError(error)
-      ? fail(error.code, error.message)
-      : fail("INTERNAL_ERROR", "Não foi possível atualizar a notificação.");
+    return toActionError(error, "Não foi possível atualizar a notificação.");
   }
 }

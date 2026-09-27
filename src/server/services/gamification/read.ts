@@ -53,8 +53,11 @@ export async function computeUserGamificationStats(userId: string): Promise<User
 
   const attempts = await repos.mockExamAttempts.listByUserId(userId);
   const scores = attempts
-    .filter((attempt) => attempt.status === "FINISHED" && attempt.scorePercent !== null)
-    .map((attempt) => attempt.scorePercent!);
+    .filter(
+      (attempt): attempt is typeof attempt & { scorePercent: number } =>
+        attempt.status === "FINISHED" && attempt.scorePercent !== null,
+    )
+    .map((attempt) => attempt.scorePercent);
 
   return {
     lessonsCompleted: countByType("LESSON_COMPLETED"),

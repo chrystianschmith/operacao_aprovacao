@@ -1,7 +1,7 @@
 "use server";
 
 import { FLASHCARDS } from "@/config/business";
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import {
   createDeckInputSchema,
   createFlashcardInputSchema,
@@ -15,7 +15,7 @@ import {
   type ReviewSessionDTO,
 } from "@/contracts/flashcards";
 import { requireUser } from "@/server/authorization";
-import { isDomainError, ValidationError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import {
   assertSharedReviewCardRateLimit,
   createCard,
@@ -36,14 +36,6 @@ import { parseInput } from "@/server/validation";
  * `userId` vindo do cliente), validam a entrada com Zod e repassam para o service. Mesmo padrão
  * de `@/server/actions/brainstorm.ts`.
  */
-
-function toActionError(error: unknown): ActionResult<never> {
-  if (isDomainError(error)) {
-    const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
-    return fail(error.code, error.message, fieldErrors);
-  }
-  return fail("INTERNAL_ERROR", "Não foi possível processar a solicitação.");
-}
 
 /** Lista os baralhos acessíveis (matéria + pessoais + favoritos) do aluno autenticado. */
 export async function listDecksAction(): Promise<ActionResult<DeckDTO[]>> {

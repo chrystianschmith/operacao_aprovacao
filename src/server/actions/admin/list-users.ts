@@ -1,8 +1,8 @@
 "use server";
 
 import { listUsersForAdmin } from "@/server/services/admin/list-users-service";
-import { fail, ok, type ActionResult } from "@/contracts/common";
-import { isDomainError } from "@/server/errors";
+import { ok, type ActionResult } from "@/contracts/common";
+import { toActionError } from "./shared";
 import type { AdminUserDTO } from "@/contracts/admin-users";
 
 /**
@@ -17,9 +17,6 @@ export async function listUsersForAdminAction(): Promise<ActionResult<AdminUserD
     const users = await listUsersForAdmin();
     return ok(users);
   } catch (error) {
-    if (isDomainError(error)) {
-      return fail(error.code, error.message);
-    }
-    return fail("INTERNAL_ERROR", "Não foi possível carregar os usuários.");
+    return toActionError(error);
   }
 }

@@ -1,6 +1,6 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import {
   getPublicProfileInputSchema,
   updatePrivacySettingsInputSchema,
@@ -8,7 +8,7 @@ import {
   type ProfileDTO,
 } from "@/contracts/profile";
 import { requireUser } from "@/server/authorization";
-import { isDomainError, ValidationError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import { getOwnProfile, getPublicProfile, updatePrivacy, updateProfile } from "@/server/services/profile";
 import { parseInput } from "@/server/validation";
 
@@ -18,14 +18,6 @@ import { parseInput } from "@/server/validation";
  * cliente — sempre resolvidos da sessão real do Auth.js (`requireUser`), nunca do corpo da
  * requisição (ADR-0006, anti-IDOR).
  */
-
-function toActionError(error: unknown): ActionResult<never> {
-  if (isDomainError(error)) {
-    const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
-    return fail(error.code, error.message, fieldErrors);
-  }
-  return fail("INTERNAL_ERROR", "Não foi possível processar a solicitação.");
-}
 
 /** Lê o perfil COMPLETO do próprio usuário autenticado ("Meu perfil"). */
 export async function getOwnProfileAction(): Promise<ActionResult<ProfileDTO>> {

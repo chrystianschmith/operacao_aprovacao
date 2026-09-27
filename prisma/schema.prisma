@@ -384,6 +384,7 @@ model Course {
   enrollments Enrollment[]
 
   @@index([contestId])
+  @@index([contestId, status, deletedAt])
   @@index([status])
   @@index([deletedAt])
 }
@@ -692,18 +693,19 @@ model MockExam {
 /// Questão. `board` (banca examinadora) é texto livre por ser um domínio aberto e
 /// numeroso (CESPE, FGV, VUNESP, ...); um índice cobre buscas/filtros por banca.
 model Question {
-  id          String        @id @default(cuid())
-  statement   String
-  subjectId   String
-  topicId     String?
-  board       String?
-  difficulty  Difficulty    @default(MEDIUM)
-  explanation String?
-  status      ContentStatus @default(DRAFT)
-  createdById String?
-  createdAt   DateTime      @default(now())
-  updatedAt   DateTime      @updatedAt
-  deletedAt   DateTime?
+  id            String        @id @default(cuid())
+  statement     String
+  subjectId     String
+  topicId       String?
+  board         String?
+  difficulty    Difficulty    @default(MEDIUM)
+  statementHash String?       @unique
+  explanation   String?
+  status        ContentStatus @default(DRAFT)
+  createdById   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+  deletedAt     DateTime?
 
   subject   Subject            @relation(fields: [subjectId], references: [id])
   topic     Topic?             @relation(fields: [topicId], references: [id])
@@ -718,6 +720,10 @@ model Question {
   @@index([difficulty])
   @@index([status])
   @@index([deletedAt])
+  @@index([subjectId, board])
+  @@index([subjectId, difficulty])
+  @@index([board, difficulty])
+  @@index([status, deletedAt, createdAt])
 }
 
 /// Alternativa da questão. `isCorrect` existe apenas para fins de correção
@@ -737,6 +743,7 @@ model QuestionOption {
   answers  QuestionAttempt[]
 
   @@index([questionId])
+  @@index([questionId, order])
 }
 
 /// Junção N:N — a mesma questão pode compor vários simulados.
@@ -749,6 +756,7 @@ model MockExamQuestion {
   question Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
 
   @@id([mockExamId, questionId])
+  @@index([mockExamId, order])
   @@index([questionId])
 }
 
@@ -779,6 +787,8 @@ model MockExamAttempt {
 
   @@index([userId, status])
   @@index([mockExamId])
+  @@index([userId, startedAt])
+  @@index([userId, mockExamId, status])
 }
 
 /// Resposta a uma questão. Quando vinculada a uma tentativa de simulado
@@ -1061,6 +1071,7 @@ model RankingScore {
 
   @@unique([userId, periodType, periodKey, scopeType, scopeKey, calculationVersion])
   @@index([periodType, periodKey, scopeType, scopeKey, calculationVersion, score])
+  @@index([calculationVersion, score])
 }
 
 /// Meta diária. ÚNICA por (userId, date).

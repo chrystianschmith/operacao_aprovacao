@@ -34,6 +34,38 @@ function assertExactlyOneCorrectOption(options: { isCorrect: boolean }[]): void 
   }
 }
 
+/** Normaliza o enunciado para comparação de duplicidade (tira bordas, colapsa espaços e
+ *  ignora caixa) — mesma matéria, sem contar questões já arquivadas. */
+function normalizeStatement(statement: string): string {
+  return statement.trim().replace(/\s+/g, " ").toLowerCase();
+}
+
+/** Garante que o enunciado não duplica uma questão VIVA da mesma matéria (a real constraint de
+ *  integridade será um índice único no schema — `docs/DATA-MODEL.md`, `Question.statement` —
+ *  pendência de `migrations`; aqui é defesa no serviço, sujeita à mesma estratégia de
+ *  arquivamento: uma questão soft-deletada NÃO bloqueia recadastrar o mesmo enunciado). */
+async function assertStatementNotDuplicate(
+  statement: string,
+  subjectId: string,
+  excludeQuestionId?: string,
+): Promise<void> {
+  const repos = getRepositories();
+  const questions = await repos.questions.listForAdmin();
+  const normalized = normalizeStatement(statement);
+  const duplicate = questions.find(
+    (question) =>
+      question.deletedAt === null &&
+      question.id !== excludeQuestionId &&
+      question.subjectId === subjectId &&
+      normalizeStatement(question.statement) === normalized,
+  );
+  if (duplicate) {
+    throw new ValidationError("Enunciado duplicado para a matéria selecionada.", {
+      statement: ["Já existe uma questão com este enunciado na matéria selecionada."],
+    });
+  }
+}
+
 export const listQuestionsForAdmin = withAdminAudit(
   { operation: "admin.questions.list", entity: "Question", roles: [...CONTENT_MANAGE_ROLES] },
   async (): Promise<AdminQuestionDTO[]> => {
@@ -55,6 +87,7 @@ export const createQuestionForAdmin = withAdminAudit(
   async (_session, input: CreateQuestionInput, now: Date): Promise<AdminQuestionDTO> => {
     assertExactlyOneCorrectOption(input.options);
     await assertSubjectAndTopic(input.subjectId, input.topicId);
+    await assertStatementNotDuplicate(input.statement, input.subjectId);
 
     const repos = getRepositories();
     const created = await repos.questions.create({
@@ -85,6 +118,16 @@ export const updateQuestionForAdmin = withAdminAudit(
     }
     if (input.subjectId !== undefined || input.topicId !== undefined) {
       await assertSubjectAndTopic(input.subjectId ?? current.subjectId, input.topicId ?? current.topicId);
+    }
+    // Duplicidade validada também na troca de enunciado e/ou de matéria de origem — misturar as
+    // duas (mesmo enunciado numa matéria nova, ou enunciado novo numa matéria existente) não
+    // pode gerar uma duplicata viva.
+    if (input.statement !== undefined || input.subjectId !== undefined) {
+      await assertStatementNotDuplicate(
+        input.statement ?? current.statement,
+        input.subjectId ?? current.subjectId,
+        current.id,
+      );
     }
 
     const updated = await repos.questions.update({

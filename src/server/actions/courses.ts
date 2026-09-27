@@ -1,6 +1,6 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import {
   enrollInputSchema,
   getCourseDetailInputSchema,
@@ -10,7 +10,7 @@ import {
   type EnrollmentResultDTO,
 } from "@/contracts/courses";
 import { requireUser } from "@/server/authorization";
-import { isDomainError, ValidationError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
 import { enroll, getCourseDetail, listCourses } from "@/server/services/courses";
 
@@ -21,14 +21,6 @@ import { enroll, getCourseDetail, listCourses } from "@/server/services/courses"
  * `@/server/actions/dashboard.ts`/`@/server/actions/admin/list-users.ts`: erros de domínio
  * viram `ActionResult` na fronteira, nunca propagam crus para a UI.
  */
-
-function toActionError(error: unknown): ActionResult<never> {
-  if (isDomainError(error)) {
-    const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
-    return fail(error.code, error.message, fieldErrors);
-  }
-  return fail("INTERNAL_ERROR", "Não foi possível processar a solicitação.");
-}
 
 /** Lista o catálogo de cursos (opcionalmente filtrado por concurso) para o aluno autenticado. */
 export async function listCoursesAction(

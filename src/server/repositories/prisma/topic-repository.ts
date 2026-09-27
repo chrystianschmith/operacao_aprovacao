@@ -1,4 +1,3 @@
-import { randomUUID } from "node:crypto";
 import type { Topic as Row } from "@/generated/prisma/client";
 import type {
   TopicEntity,
@@ -6,6 +5,7 @@ import type {
   TopicCreateInput,
   TopicUpdateInput,
 } from "../contracts/topic-repository";
+import { generateSlug } from "@/lib/slug";
 
 function map(row: Row): TopicEntity {
   return {
@@ -48,15 +48,7 @@ export class PrismaTopicRepository implements TopicRepository {
       await prisma.topic.create({
         data: {
           ...data,
-          slug:
-            input.name
-              .normalize("NFKD")
-              .replace(/[\u0300-\u036f]/g, "")
-              .toLowerCase()
-              .replace(/[^a-z0-9]+/g, "-")
-              .replace(/^-|-$/g, "") +
-            "-" +
-            randomUUID(),
+          slug: generateSlug(input.name),
           createdAt: now,
           updatedAt: now,
         },

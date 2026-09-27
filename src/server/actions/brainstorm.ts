@@ -1,6 +1,6 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import {
   boardIdInputSchema,
   cardIdInputSchema,
@@ -13,7 +13,7 @@ import {
   type BrainstormCardDTO,
 } from "@/contracts/brainstorm";
 import { requireUser } from "@/server/authorization";
-import { isDomainError, ValidationError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import {
   convertToFlashcard,
   convertToStudyTask,
@@ -34,14 +34,6 @@ import { parseInput } from "@/server/validation";
  * `userId` vindo do cliente), validam a entrada com Zod e repassam para o service. Mesmo padrão
  * de `@/server/actions/study-plan.ts`.
  */
-
-function toActionError(error: unknown): ActionResult<never> {
-  if (isDomainError(error)) {
-    const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
-    return fail(error.code, error.message, fieldErrors);
-  }
-  return fail("INTERNAL_ERROR", "Não foi possível processar a solicitação.");
-}
 
 /** Cria um novo quadro (com as 5 colunas padrão) para o aluno autenticado. */
 export async function createBoardAction(rawInput: unknown): Promise<ActionResult<BrainstormBoardDTO>> {

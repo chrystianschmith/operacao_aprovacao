@@ -1,8 +1,8 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import { requireUser } from "@/server/authorization";
-import { isDomainError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import { getUserGamification, type UserGamificationView } from "@/server/services/gamification";
 
 /**
@@ -16,9 +16,6 @@ export async function getUserGamificationAction(): Promise<ActionResult<UserGami
     const gamification = await getUserGamification(session.userId);
     return ok(gamification);
   } catch (error) {
-    if (isDomainError(error)) {
-      return fail(error.code, error.message);
-    }
-    return fail("INTERNAL_ERROR", "Não foi possível carregar a gamificação.");
+    return toActionError(error, "Não foi possível carregar a gamificação.");
   }
 }

@@ -66,6 +66,13 @@ export interface LessonRepository {
   /** Fase 17 (admin) — TODAS as aulas do módulo (qualquer `status`, incluindo soft-deleted),
    *  ordenadas por `order` crescente. */
   listByModuleIdForAdmin(moduleId: string): Promise<LessonEntity[]>;
+  /**
+   * BATCH (performance) — aulas PUBLICADAS e ativas de vários módulos de uma vez
+   * (trilha/dashboard/search), agrupadas por `moduleId` e por `order` crescente. Substitui N
+   * chamadas a `listByModuleId` por 1 consulta `WHERE moduleId IN (...)` — elimina o N+1 de
+   * `courses/shared.ts` e `navigation/search.ts` sem alterar o retorno de `listByModuleId`.
+   */
+  listByModuleIds(moduleIds: string[]): Promise<LessonEntity[]>;
   create(input: LessonCreateInput): Promise<LessonEntity>;
   update(input: LessonUpdateInput): Promise<LessonEntity>;
   /** Soft-delete (`deletedAt`) — operação destrutiva; o service exige `confirm: true`. */

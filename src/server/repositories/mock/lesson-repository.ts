@@ -28,6 +28,14 @@ export class MockLessonRepository implements LessonRepository {
       .sort((a, b) => a.order - b.order);
   }
 
+  async listByModuleIds(moduleIds: string[]): Promise<LessonEntity[]> {
+    if (moduleIds.length === 0) return [];
+    const wanted = new Set(moduleIds);
+    return store
+      .filter((lesson) => wanted.has(lesson.moduleId) && isVisibleToStudents(lesson))
+      .sort((a, b) => (a.moduleId === b.moduleId ? a.order - b.order : a.moduleId.localeCompare(b.moduleId)));
+  }
+
   async listByModuleIdForAdmin(moduleId: string): Promise<LessonEntity[]> {
     return store.filter((lesson) => lesson.moduleId === moduleId).sort((a, b) => a.order - b.order);
   }

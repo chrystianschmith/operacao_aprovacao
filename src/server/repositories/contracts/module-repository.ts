@@ -58,6 +58,13 @@ export interface ModuleRepository {
   /** Fase 17 (admin) — TODOS os módulos do curso (qualquer `status`, incluindo soft-deleted),
    *  ordenados por `order` crescente. */
   listByCourseIdForAdmin(courseId: string): Promise<ModuleEntity[]>;
+  /**
+   * BATCH (performance) — módulos PUBLICADOS e ativos de vários cursos de uma vez
+   * (dashboard/search), agrupados por `courseId` e por `order` crescente. Substitui N chamadas
+   * a `listByCourseId` por 1 consulta `WHERE courseId IN (...)` — elimina o N+1 de
+   * `navigation/search.ts` sem alterar o retorno de `listByCourseId`.
+   */
+  listByCourseIds(courseIds: string[]): Promise<ModuleEntity[]>;
   create(input: ModuleCreateInput): Promise<ModuleEntity>;
   update(input: ModuleUpdateInput): Promise<ModuleEntity>;
   /** Soft-delete (`deletedAt`) — operação destrutiva; o service exige `confirm: true`. */

@@ -1,5 +1,15 @@
 # Estado Atual — Auditoria de Produção (Operação Aprovação)
 
+> ⚠️ **DOCUMENTO HISTÓRICO (auditoria de 13/09/2026).** Os números aqui ("34 repos stub", "741
+> testes", "bloqueadores #1/#2 críticos") **não correspondem mais ao código**. Na revalidação de
+> 14/09 e nas etapas seguintes, os 172 métodos Prisma foram implementados: hoje há **44 repos
+> Prisma reais** (zero stubs) em `src/server/repositories/prisma/`, **979 testes unit** em 153
+> arquivos, migration até `0013_add_performance_indexes`, MFA, billing/Stripe, e-mail com fila,
+> storage/vídeo assinados, registro/recuperação de senha e CI completo com Postgres. Fonte de
+> verdade vigente: [`docs/implementation/STATUS.md`](../implementation/STATUS.md) e
+> [`docs/implementation/REVALIDACAO-2026-09-14.md`](../implementation/REVALIDACAO-2026-09-14.md).
+> Este arquivo é preservado como registro da auditoria original e das prioridades P0–P3.
+>
 > Produzido pelo subagente `architect` como parte da preparação para tirar a aplicação do
 > modo mock e habilitar usuários reais. Este documento é uma **auditoria verificada no
 > código** (não presume que algo esteja pronto só porque a UI existe). Fonte de verdade do

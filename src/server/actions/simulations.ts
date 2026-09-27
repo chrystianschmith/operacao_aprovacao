@@ -1,10 +1,10 @@
 "use server";
 
 import { reserveInterval } from "@/server/concurrency/rate-limit";
-import { RateLimitError } from "@/server/errors";
+import { RateLimitError, toActionError } from "@/server/errors";
 
 import { SIMULATIONS } from "@/config/business";
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import {
   attemptIdInputSchema,
   listTopicOptionsInputSchema,
@@ -23,7 +23,6 @@ import {
   type TopicOptionDTO,
 } from "@/contracts/simulations";
 import { requireUser } from "@/server/authorization";
-import { isDomainError, ValidationError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
 import {
   assertSimulationsRateLimit,
@@ -47,14 +46,6 @@ import {
  * validam a entrada com Zod e repassam para o service. Mesmo padrão de
  * `@/server/actions/courses.ts`/`@/server/actions/progress.ts`.
  */
-
-function toActionError(error: unknown): ActionResult<never> {
-  if (isDomainError(error)) {
-    const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
-    return fail(error.code, error.message, fieldErrors);
-  }
-  return fail("INTERNAL_ERROR", "Não foi possível processar a solicitação.");
-}
 
 /** Cria uma nova tentativa de simulado (completo ou personalizado por filtros) para o aluno autenticado. */
 export async function createAttemptAction(rawInput?: unknown): Promise<ActionResult<AttemptDTO>> {

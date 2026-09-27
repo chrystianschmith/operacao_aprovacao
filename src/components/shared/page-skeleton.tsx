@@ -10,17 +10,20 @@ interface PageSkeletonProps {
  */
 export function PageSkeleton({ rows = 4 }: PageSkeletonProps) {
   return (
-    <div className="space-y-6" aria-hidden="true">
-      <Skeleton className="h-8 w-48" />
-      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-        {Array.from({ length: 3 }).map((_, index) => (
-          <Skeleton key={index} className="h-24 w-full rounded-lg" />
-        ))}
-      </div>
-      <div className="space-y-3">
-        {Array.from({ length: rows }).map((_, index) => (
-          <Skeleton key={index} className="h-4 w-full" />
-        ))}
+    <div role="status" aria-busy="true" aria-live="polite">
+      <span className="sr-only">Carregando conteúdo…</span>
+      <div className="space-y-6" aria-hidden="true">
+        <Skeleton className="h-8 w-48" />
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, index) => (
+            <Skeleton key={index} className="h-24 w-full rounded-lg" />
+          ))}
+        </div>
+        <div className="space-y-3">
+          {Array.from({ length: rows }).map((_, index) => (
+            <Skeleton key={index} className="h-4 w-full" />
+          ))}
+        </div>
       </div>
     </div>
   );

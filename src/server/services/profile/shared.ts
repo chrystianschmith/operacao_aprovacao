@@ -106,16 +106,17 @@ export async function buildAggregates(userId: string): Promise<ProfileAggregates
   ]);
 
   const unlocked = gamification.achievements.filter(
-    (achievement) => achievement.unlocked && achievement.unlockedAt !== null,
+    (achievement): achievement is typeof achievement & { unlockedAt: string } =>
+      achievement.unlocked && achievement.unlockedAt !== null,
   );
   const recentAchievements = [...unlocked]
-    .sort((a, b) => (b.unlockedAt ?? "").localeCompare(a.unlockedAt ?? ""))
+    .sort((a, b) => b.unlockedAt.localeCompare(a.unlockedAt))
     .slice(0, 5)
     .map((achievement) => ({
       key: achievement.key,
       name: achievement.name,
       icon: achievement.icon,
-      unlockedAt: achievement.unlockedAt as string,
+      unlockedAt: achievement.unlockedAt,
     }));
 
   return {

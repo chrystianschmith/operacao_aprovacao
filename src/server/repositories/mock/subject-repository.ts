@@ -22,6 +22,17 @@ export class MockSubjectRepository implements SubjectRepository {
     return store.filter((subject) => subject.deletedAt === null);
   }
 
+  async listByIds(ids: string[]): Promise<SubjectEntity[]> {
+    if (ids.length === 0) return [];
+    const wanted = new Set(ids);
+    const byId = new Map(
+      store
+        .filter((subject) => subject.deletedAt === null && wanted.has(subject.id))
+        .map((subject) => [subject.id, subject] as const),
+    );
+    return ids.flatMap((id) => (byId.get(id) !== undefined ? [byId.get(id)!] : []));
+  }
+
   async listForAdmin(): Promise<SubjectEntity[]> {
     return [...store];
   }

@@ -28,6 +28,15 @@ O CI define dump, restauração em outro banco e integração sobre o destino re
 
 Antes de liberar dados reais: exercite indisponibilidade do banco, restauração isolada, revogação de sessão, fila atrasada e rollback de release compatível com migrations. Registre duração e perda observadas. O [plano de recuperação](../production/BACKUP_AND_RECOVERY.md) é referência operacional histórica; condições comerciais do provedor precisam ser conferidas no ambiente contratado.
 
+## Validação local
+
+`next build` roda com `NODE_ENV=production`, o que ativa os gates de produção de `src/config/env.ts`
+(segredos reais, `DATA_SOURCE=prisma`, HTTPS, MFA). Para validar o bundle sem credenciais de cloud,
+use `npm run build:demo` (`scripts/build-demo.mjs`): injeta `APP_ENV=demo` + `DATA_SOURCE=mock` e
+placeholders longos (≥32 caracteres) para `AUTH_SECRET`/`CRON_SECRET`. O contrato de ambiente trata
+`demo` como "não deploy" — os gates de produção permanecem intactos nos ambientes reais. Esses
+placeholders servem apenas para a validação local e nunca devem ser usados fora dela.
+
 ## MFA e pagamentos
 
 Produção exige `ADMIN_MFA_REQUIRED=true` e `MFA_ENCRYPTION_KEY` própria (64 caracteres hexadecimais, 32 bytes). O administrador de bootstrap pode entrar para configurar `/seguranca`; operações administrativas ficam bloqueadas até ativação. Guarde a chave fora do banco, junto ao processo seguro de recuperação. Confira [o procedimento MFA](../security/MFA.md).

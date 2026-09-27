@@ -1,8 +1,8 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import { getRankingInputSchema } from "@/contracts/ranking";
-import { isDomainError, ValidationError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import { getRanking, type RankingReadResult } from "@/server/services/gamification";
 import { parseInput } from "@/server/validation";
 
@@ -22,10 +22,6 @@ export async function getRankingAction(rawInput: unknown): Promise<ActionResult<
     });
     return ok(result);
   } catch (error) {
-    if (isDomainError(error)) {
-      const fieldErrors = error instanceof ValidationError ? error.fieldErrors : undefined;
-      return fail(error.code, error.message, fieldErrors);
-    }
-    return fail("INTERNAL_ERROR", "Não foi possível carregar o ranking.");
+    return toActionError(error, "Não foi possível carregar o ranking.");
   }
 }

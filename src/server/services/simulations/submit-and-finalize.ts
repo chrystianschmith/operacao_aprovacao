@@ -13,6 +13,7 @@ import {
   type QuestionCorrectPayload,
 } from "@/server/services/gamification";
 import { buildAttemptResultDTO } from "./mappers";
+import { computeScorePercent } from "./scoring";
 
 /**
  * Registra os consumidores de gamificação assim que este módulo é carregado — mesmo padrão de
@@ -138,7 +139,14 @@ async function submitAndFinalizeInTransaction(userId: string, input: SubmitAnswe
   }
 
   const totalQuestions = exam.questionIds.length;
-  const scorePercent = totalQuestions > 0 ? Math.round((correctCount / totalQuestions) * 10000) / 100 : 0;
+  // Nota calculada EXCLUSIVAMENTE no servidor, em um único ponto central (`computeScorePercent`)
+  // com a penalidade configurável `SIMULATIONS.negativeMarkingPerWrong` — nunca vinda do cliente.
+  const scorePercent = computeScorePercent({
+    correctCount,
+    wrongCount,
+    totalQuestions,
+    negativeMarkingPerWrong: SIMULATIONS.negativeMarkingPerWrong,
+  });
   const timeSpentPerQuestion = totalQuestions > 0 ? Math.round(elapsedSeconds / totalQuestions) : null;
 
   const finalized = await repos.mockExamAttempts.finalize({

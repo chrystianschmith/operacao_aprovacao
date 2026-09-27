@@ -317,7 +317,7 @@ function buildOverdueReviews(
 
   return plan.items
     .filter(
-      (item) =>
+      (item): item is typeof item & { targetDate: string } =>
         item.kind === "REVIEW" &&
         item.targetDate !== null &&
         item.targetDate < todayIso &&
@@ -327,8 +327,8 @@ function buildOverdueReviews(
       itemId: item.id,
       title: item.title,
       subjectName: item.subjectName,
-      targetDate: item.targetDate as string,
-      daysLate: diffDaysIso(item.targetDate as string, todayIso),
+      targetDate: item.targetDate,
+      daysLate: diffDaysIso(item.targetDate, todayIso),
     }))
     .sort((a, b) => b.daysLate - a.daysLate);
 }

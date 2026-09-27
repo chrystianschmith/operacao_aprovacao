@@ -34,6 +34,17 @@ export class PrismaLessonRepository implements LessonRepository {
       })
     ).map(map);
   }
+  async listByModuleIds(moduleIds: string[]) {
+    if (moduleIds.length === 0) return [];
+    const { prisma } = await import("@/server/db/prisma");
+    return (
+      await prisma.lesson.findMany({
+        where: { moduleId: { in: moduleIds }, status: "PUBLISHED", deletedAt: null },
+        orderBy: [{ moduleId: "asc" }, { order: "asc" }],
+      })
+    ).map(map);
+  }
+    
   async listByModuleIdForAdmin(moduleId: string) {
     const { prisma } = await import("@/server/db/prisma");
     return (await prisma.lesson.findMany({ where: { moduleId }, orderBy: { order: "asc" } })).map(

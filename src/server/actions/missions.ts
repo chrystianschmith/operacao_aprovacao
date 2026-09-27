@@ -1,8 +1,8 @@
 "use server";
 import { z } from "zod";
-import { fail, ok, type ActionResult, idSchema } from "@/contracts/common";
+import { ok, type ActionResult, idSchema } from "@/contracts/common";
 import type { StudyMissionDTO } from "@/contracts/study-session";
-import { isDomainError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import { parseInput } from "@/server/validation";
 import {
   getMyMission,
@@ -13,18 +13,14 @@ export async function getMyMissionAction(raw: unknown): Promise<ActionResult<Stu
   try {
     return ok(await getMyMission(parseInput(z.object({ id: idSchema }), raw).id));
   } catch (error) {
-    return isDomainError(error)
-      ? fail(error.code, error.message)
-      : fail("INTERNAL_ERROR", "Não foi possível carregar a missão.");
+    return toActionError(error, "Não foi possível carregar a missão.");
   }
 }
 export async function listMyMissionsAction(): Promise<ActionResult<StudyMissionDTO[]>> {
   try {
     return ok(await listMyMissions());
   } catch (error) {
-    return isDomainError(error)
-      ? fail(error.code, error.message)
-      : fail("INTERNAL_ERROR", "Não foi possível carregar as missões.");
+    return toActionError(error, "Não foi possível carregar as missões.");
   }
 }
 export async function advanceMyMissionAction(raw: unknown): Promise<ActionResult<StudyMissionDTO>> {
@@ -35,8 +31,6 @@ export async function advanceMyMissionAction(raw: unknown): Promise<ActionResult
     );
     return ok(await advanceMyMission(input.id, input.expectedBlockIndex));
   } catch (error) {
-    return isDomainError(error)
-      ? fail(error.code, error.message)
-      : fail("INTERNAL_ERROR", "Não foi possível atualizar a missão.");
+    return toActionError(error, "Não foi possível atualizar a missão.");
   }
 }

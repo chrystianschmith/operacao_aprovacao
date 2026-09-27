@@ -26,6 +26,12 @@ export async function AdminShell({ children }: AdminShellProps) {
 
   return (
     <div className="bg-background flex min-h-screen">
+      <a
+        href="#admin-main-content"
+        className="bg-primary text-primary-foreground focus-visible:ring-ring fixed top-2 left-2 z-[100] -translate-y-24 rounded-md px-4 py-2 text-sm font-semibold focus:translate-y-0 focus:ring-2"
+      >
+        Pular para o conteúdo principal
+      </a>
       <aside className="border-sidebar-border bg-sidebar hidden w-64 shrink-0 border-r lg:flex lg:flex-col">
         <div className="border-sidebar-border flex h-16 items-center gap-2 border-b px-5">
           <ShieldCheck className="text-sidebar-primary h-6 w-6" aria-hidden="true" />
@@ -60,7 +66,9 @@ export async function AdminShell({ children }: AdminShellProps) {
             Voltar para o app do aluno
           </Link>
         </header>
-        <main className="mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">{children}</main>
+        <main id="admin-main-content" tabIndex={-1} className="focus-visible:outline-none mx-auto w-full max-w-6xl flex-1 px-4 py-8 sm:px-6">
+          {children}
+        </main>
       </div>
     </div>
   );

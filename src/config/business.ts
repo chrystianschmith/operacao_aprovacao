@@ -98,6 +98,15 @@ export const SIMULATIONS = {
   createAttemptMinIntervalMs: 2_000,
   /** Rate limit LEVE: intervalo mínimo entre submissões/finalizações por usuário. */
   submitAttemptMinIntervalMs: 1_000,
+  /**
+   * Penalidade por erro no cálculo da nota (CLAUDE.md §18 — "pontuação negativa por erro",
+   * comum em concursos tipo CESPE): quantas respostas CERTAS cada resposta errada anula.
+   * `0` = sem penalidade (nota = acertos / total). `1` = nota = max(0, acertos − erros).
+   * Valor lido SOMENTE no servidor (`submitAndFinalize` → `computeScorePercent` em
+   * `@/server/services/simulations/scoring.ts`); nunca aceito do cliente (`SubmitAnswersInput`
+   * não possui esse campo). A resposta em branco é neutra (soma nem subtrai).
+   */
+  negativeMarkingPerWrong: 0,
 } as const;
 
 /**
@@ -428,4 +437,48 @@ export const FOCUS = {
   objectiveMaxLength: 200,
   contentStudiedMaxLength: 2_000,
   doubtNoteMaxLength: 1_000,
+} as const;
+
+/**
+ * Precificação da assinatura (Fase "sales-page" — agente `sales`, CLAUDE.md §2).
+ * Fonte única de valor do plano; referenciada pela página de vendas (`src/app/(marketing)/sales/`)
+ * e pelo fluxo de billing. Valores exibidos em reais (BRL) — nada é calculado no cliente.
+ */
+export const PRICING = {
+  /** Plano mensal (cobrança recorrente mensal). */
+  monthly: { amountCents: 19700, label: "Mensal", priceLabel: "R$ 197/mês" },
+  /** Plano anual — âncora de valor no funil (≈ R$ 166/mês). */
+  annual: { amountCents: 199700, label: "Anual", priceLabel: "R$ 1.997/ano" },
+  /** Valor mensal implícito anual (apenas apresentação — derivado de `annual.amountCents`). */
+  annualMonthlyEquivalentCents: 16642,
+  /** Fator informativo de desconto anual frente a 12× mensal (exibição). */
+  annualDiscountPercent: 15,
+  /** Duração do teste grátis (dias), sem cobrança de cartão. */
+  trialDays: 7,
+  /** Garantia "estude ou devolvemos" (dias) — amplia os 7 dias legais do CDC. */
+  guaranteeDays: 30,
+  /** Cupom/bônus descrito na página de vendas (URNA — ver docs/sales/offers). */
+  founderBonusLabel: "Mentoria de planejamento no 1º mês",
+} as const;
+
+/**
+ * Experimentos A/B da página de vendas (Fase "sales-page" — agente `sales-page`, CLAUDE.md §2,
+ * docs/sales-page/ab-plan). Apenas a CONFIGURAÇÃO vive aqui; o bucketing em si é feito no
+ * `src/proxy.ts` (cookie `_oa_ab`) e lido por `src/app/(marketing)/sales/ab-test/config.ts`.
+ * Cada experimento declara a fração de tráfego e a lista de variantes (a 1ª é o controle).
+ */
+export const AB_TEST_CONFIG = {
+  cookieName: "_oa_ab",
+  experiments: {
+    hero_headline: {
+      enabled: false,
+      trafficBias: 1,
+      variants: [{ id: "control", label: "Big Promise" }, { id: "mechanism", label: "Mecanismo" }],
+    },
+    hero_cta: {
+      enabled: false,
+      trafficBias: 1,
+      variants: [{ id: "trial", label: "Teste 7 dias" }, { id: "plan", label: "Ver plano" }],
+    },
+  },
 } as const;

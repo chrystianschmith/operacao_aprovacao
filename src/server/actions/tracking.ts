@@ -1,9 +1,9 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import type { DiagnosisDTO, TrackingOverviewDTO } from "@/contracts/tracking";
 import { requireUser } from "@/server/authorization";
-import { isDomainError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import { computeDiagnosis } from "@/server/services/study-tracking/diagnosis";
 import { getTrackingOverview } from "@/server/services/study-tracking/tracking-overview";
 
@@ -13,13 +13,6 @@ import { getTrackingOverview } from "@/server/services/study-tracking/tracking-o
  * (nunca de um `userId` vindo do cliente) e repassam para o serviço. Mesmo padrão de
  * `@/server/actions/dashboard.ts`/`@/server/actions/study-plan.ts`.
  */
-
-function toActionError(error: unknown): ActionResult<never> {
-  if (isDomainError(error)) {
-    return fail(error.code, error.message);
-  }
-  return fail("INTERNAL_ERROR", "Não foi possível processar a solicitação.");
-}
 
 /** Lê o acompanhamento agregado (horas, aulas, questões, metas, sequência, plano) do aluno
  *  autenticado — também recalcula/persiste sequência e metas diária/semanal desta chamada. */

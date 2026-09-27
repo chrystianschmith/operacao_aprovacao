@@ -145,3 +145,34 @@
     @apply font-sans;
   }
 }
+
+/* Foco visível por teclado (CLAUDE.md §22): o shadcn já usa `focus-visible:ring-*` nos seus
+   componentes; esta regra cobre elementos nativos (links, inputs crus, detalhes/summary) que
+   não passam por esses componentes, sem duplicar anel nos que já o têm. */
+@layer base {
+  :focus-visible {
+    outline: 2px solid var(--ring);
+    outline-offset: 2px;
+  }
+}
+
+/* Scroll suave apenas para quem não pediu redução de movimento (CLAUDE.md §22). */
+@media (prefers-reduced-motion: no-preference) {
+  html {
+    scroll-behavior: smooth;
+  }
+}
+
+/* Respeita `prefers-reduced-motion`: desliga animações/transições e scrolls com força como
+   segurança global — `motion-reduce:*` já cobre os casos pontuais do projeto, este bloco é a
+   rede de segurança para qualquer utilitário de animação que vier a ser usado. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}

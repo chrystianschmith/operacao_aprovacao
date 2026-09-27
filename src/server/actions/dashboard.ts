@@ -1,9 +1,9 @@
 "use server";
 
-import { fail, ok, type ActionResult } from "@/contracts/common";
+import { ok, type ActionResult } from "@/contracts/common";
 import type { DashboardDTO } from "@/contracts/dashboard";
 import { requireUser } from "@/server/authorization";
-import { isDomainError } from "@/server/errors";
+import { toActionError } from "@/server/errors";
 import { getStudentDashboard } from "@/server/services/dashboard-service";
 
 /**
@@ -19,9 +19,6 @@ export async function getDashboardAction(): Promise<ActionResult<DashboardDTO>> 
     const dashboard = await getStudentDashboard(session.userId);
     return ok(dashboard);
   } catch (error) {
-    if (isDomainError(error)) {
-      return fail(error.code, error.message);
-    }
-    return fail("INTERNAL_ERROR", "Não foi possível carregar o dashboard.");
+    return toActionError(error, "Não foi possível carregar o dashboard.");
   }
 }

@@ -20,3 +20,5 @@ export {
 /** Reaproveitado pela Fase 12 (`@/server/services/study-tracking/tracking-overview`) para
  *  agregar aproveitamento por matéria/assunto sobre TODO o histórico de `QuestionAttempt`. */
 export { computePerformance } from "./mappers";
+/** Cálculo central da nota de simulado (única fonte de `AttemptResultDTO.scorePercent`). */
+export { computeScorePercent } from "./scoring";

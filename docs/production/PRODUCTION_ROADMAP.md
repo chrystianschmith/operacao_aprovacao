@@ -1,5 +1,15 @@
 # Roadmap de Produção — Consolidado (Operação Aprovação)
 
+> ⚠️ **DOCUMENTO HISTÓRICO (planejamento de 13/09/2026).** As fases 2–16 foram majoritariamente
+> executadas nas revalidações de 13 e 14/09 e etapas seguintes: repos Prisma implementados,
+> migrations até `0013`, MFA, billing/Stripe, e-mail/fila, storage/vídeo assinado, registro e
+> recuperação de senha, CI com Postgres. Estado vigente em
+> [`docs/implementation/STATUS.md`](../implementation/STATUS.md) e
+> [`docs/implementation/REVALIDACAO-2026-09-14.md`](../implementation/REVALIDACAO-2026-09-14.md).
+> O que ainda está em aberto é **exclusivamente a camada de cloud/comercial** (provisionar
+> Supabase/Vercel/Cloudflare, domínio, Resend/Stripe reais, admin bootstrap, monitoramento,
+> ensaio de restore na nuvem) — ver `OPERACAO.md` e `GO_LIVE_CHECKLIST.md`.
+>
 > Produzido pelo subagente `reviewer` como **consolidação final** da análise de produção.
 > Reúne o [`ROADMAP_SKELETON.md`](./ROADMAP_SKELETON.md) (espinha do `architect`) num cronograma
 > técnico completo e cruza os 18 documentos de `docs/production/` + [`docs/SECURITY.md`](../SECURITY.md)
