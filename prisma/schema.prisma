@@ -693,19 +693,18 @@ model MockExam {
 /// Questão. `board` (banca examinadora) é texto livre por ser um domínio aberto e
 /// numeroso (CESPE, FGV, VUNESP, ...); um índice cobre buscas/filtros por banca.
 model Question {
-  id            String        @id @default(cuid())
-  statement     String
-  subjectId     String
-  topicId       String?
-  board         String?
-  difficulty    Difficulty    @default(MEDIUM)
-  statementHash String?       @unique
-  explanation   String?
-  status        ContentStatus @default(DRAFT)
-  createdById   String?
-  createdAt     DateTime      @default(now())
-  updatedAt     DateTime      @updatedAt
-  deletedAt     DateTime?
+  id          String        @id @default(cuid())
+  statement   String
+  subjectId   String
+  topicId     String?
+  board       String?
+  difficulty  Difficulty    @default(MEDIUM)
+  explanation String?
+  status      ContentStatus @default(DRAFT)
+  createdById String?
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  deletedAt   DateTime?
 
   subject   Subject            @relation(fields: [subjectId], references: [id])
   topic     Topic?             @relation(fields: [topicId], references: [id])
