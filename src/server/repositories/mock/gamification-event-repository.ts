@@ -53,6 +53,15 @@ export class MockGamificationEventRepository implements GamificationEventReposit
   async listByUserId(userId: string): Promise<GamificationEventEntity[]> {
     return store.filter((event) => event.userId === userId);
   }
+
+  async countByType(userId: string): Promise<Array<{ type: GamificationEventEntity["type"]; count: number }>> {
+    const counts = new Map<GamificationEventEntity["type"], number>();
+    for (const event of store) {
+      if (event.userId !== userId) continue;
+      counts.set(event.type, (counts.get(event.type) ?? 0) + 1);
+    }
+    return [...counts.entries()].map(([type, count]) => ({ type, count }));
+  }
 }
 
 /** Uso exclusivo de testes — restaura o store mock ao seed original. */

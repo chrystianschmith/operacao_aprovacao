@@ -9,6 +9,7 @@ import {
 } from "@/server/services/study-tracking/activity-days";
 import { ACHIEVEMENTS } from "./achievements";
 import type { UserGamificationStats, AchievementDefinition } from "./achievements";
+import type { GamificationEventType } from "@/server/repositories/contracts/gamification-event-repository";
 import { computeLevel, type ComputedLevel } from "./levels";
 
 /**
@@ -33,10 +34,10 @@ import { computeLevel, type ComputedLevel } from "./levels";
  */
 export async function computeUserGamificationStats(userId: string): Promise<UserGamificationStats> {
   const repos = getRepositories();
-  const events = await repos.gamificationEvents.listByUserId(userId);
-
-  const countByType = (type: (typeof events)[number]["type"]): number =>
-    events.filter((event) => event.type === type).length;
+  const counts = new Map(
+    (await repos.gamificationEvents.countByType(userId)).map((row) => [row.type, row.count]),
+  );
+  const countByType = (type: GamificationEventType): number => counts.get(type) ?? 0;
 
   // Fase 12 (study-tracking): sequência real, lida do cache materializado
   // (`UserStreakRepository`) — `0` enquanto a linha ainda não existe (nenhum recálculo rodou

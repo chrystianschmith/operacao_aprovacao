@@ -64,4 +64,12 @@ export interface GamificationEventRepository {
    */
   create(input: GamificationEventCreateInput): Promise<GamificationEventEntity>;
   listByUserId(userId: string): Promise<GamificationEventEntity[]>;
+  /**
+   * Contagem de eventos DO USUÁRIO agrupada por `type` — agregado no banco (`GROUP BY type`) em
+   * vez de carregar o ledger inteiro só para contar ocorrências (o histórico de eventos cresce
+   * sem limite por usuário; `computeUserGamificationStats`/`getAchievementDefinitions` só
+   * precisam das contagens). Sobre TODOS os status (inclusive `FAILED`/`SKIPPED`/`PENDING`) —
+   * mesma semântica de `listByUserId`, preservada para não alterar regra de conquista.
+   */
+  countByType(userId: string): Promise<Array<{ type: GamificationEventType; count: number }>>;
 }

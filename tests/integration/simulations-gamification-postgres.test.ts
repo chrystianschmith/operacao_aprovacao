@@ -80,6 +80,7 @@ describe.skipIf(!testUrl)("simulations and gamification — isolated PostgreSQL"
     await prisma.domainOutbox.deleteMany({ where: { idempotencyKey: { contains: userId } } });
     await prisma.auditLog.deleteMany({ where: { actorUserId: userId } });
     await prisma.pointTransaction.deleteMany({ where: { userId } });
+    await prisma.gamificationEvent.deleteMany({ where: { userId } });
     await prisma.user.deleteMany({ where: { id: userId } });
     await prisma.achievement.deleteMany({ where: { key: achievementKey } });
     await prisma.mockExam.deleteMany({ where: { title: prefix } });
@@ -220,6 +221,86 @@ describe.skipIf(!testUrl)("simulations and gamification — isolated PostgreSQL"
       (await repos.pointTransactions.create({ ...input, points: 999, now: new Date() })).points,
     ).toBe(20);
     expect(await repos.pointTransactions.sumByUserId(userId)).toEqual({ points: 20, xp: 20 });
+  });
+
+  it("aggregates the immutable ledger by civil day on the database", async () => {
+    await prisma.pointTransaction.deleteMany({ where: { userId } });
+    const input = {
+      userId,
+      gamificationEventId: null,
+      type: "EARN" as const,
+      points: 10,
+      xp: 10,
+      reason: "Synthetic day aggregation",
+    };
+    const at2026_09_14_23h30 = new Date("2026-09-14T23:30:00Z");
+    const at2026_09_15_01h00 = new Date("2026-09-15T01:00:00Z");
+    const at2026_09_15_02h30 = new Date("2026-09-15T02:30:00Z");
+    await repos.pointTransactions.create({
+      ...input,
+      idempotencyKey: `${prefix}-byday-a`,
+      now: at2026_09_14_23h30,
+    });
+    await repos.pointTransactions.create({
+      ...input,
+      idempotencyKey: `${prefix}-byday-b`,
+      now: at2026_09_15_01h00,
+      points: 20,
+      xp: 20,
+    });
+    await repos.pointTransactions.create({
+      ...input,
+      idempotencyKey: `${prefix}-byday-c`,
+      now: at2026_09_15_02h30,
+      points: 30,
+      xp: 30,
+    });
+
+    const utc = new Map(
+      (await repos.pointTransactions.sumPointsByDate(userId, "UTC")).map((row) => [
+        row.date,
+        row.points,
+      ]),
+    );
+    expect(utc).toEqual(
+      new Map([
+        ["2026-09-14T00:00:00.000Z", 10],
+        ["2026-09-15T00:00:00.000Z", 50],
+      ]),
+    );
+
+    // 23:30Z e 01:00Z/02:30Z caem no MESMO dia civil de America/Sao_Paulo (UTC-3, sem DST
+    // desde 2019): 20:30, 22:00 e 23:30 de 14/09 — a agregação por dia depende da timezone.
+    const saoPaulo = new Map(
+      (await repos.pointTransactions.sumPointsByDate(userId, "America/Sao_Paulo")).map((row) => [
+        row.date,
+        row.points,
+      ]),
+    );
+    expect(saoPaulo).toEqual(new Map([["2026-09-14T00:00:00.000Z", 60]]));
+  });
+
+  it("counts events per type on the database across statuses", async () => {
+    await prisma.gamificationEvent.deleteMany({ where: { userId } });
+    const input = (type: "QUESTION_CORRECT" | "DAILY_GOAL_COMPLETED", suffix: number) => ({
+      userId,
+      type,
+      idempotencyKey: `${prefix}-cnt-${suffix}`,
+      sourceType: type === "QUESTION_CORRECT" ? "Question" : "DailyGoal",
+      sourceId: type === "QUESTION_CORRECT" ? questionId : ("goal-mock" as const),
+      points: 20,
+      xp: 20,
+      ruleVersion: 1,
+      status: "PROCESSED" as const,
+      now,
+    });
+    await repos.gamificationEvents.create(input("QUESTION_CORRECT", 1));
+    await repos.gamificationEvents.create({ ...input("QUESTION_CORRECT", 2), status: "FAILED" });
+    await repos.gamificationEvents.create(input("DAILY_GOAL_COMPLETED", 3));
+    const rows = await repos.gamificationEvents.countByType(userId);
+    expect(
+      Object.fromEntries(rows.map((row) => [row.type, row.count])),
+    ).toEqual({ QUESTION_CORRECT: 2, DAILY_GOAL_COMPLETED: 1 });
   });
 
   it("preserves original achievement time on concurrent unlock", async () => {

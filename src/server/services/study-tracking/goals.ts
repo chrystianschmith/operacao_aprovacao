@@ -91,12 +91,10 @@ export function isGoalAchieved(input: {
  *  read-only; deduplicado apenas por request RSC, inofensivo fora dele). */
 const sumPointsByDate = cache(
   async (userId: string, timezone: string): Promise<Map<string, number>> => {
-    const repos = getRepositories();
-    const transactions = await repos.pointTransactions.listByUserId(userId);
+    const rows = await getRepositories().pointTransactions.sumPointsByDate(userId, timezone);
     const byDate = new Map<string, number>();
-    for (const transaction of transactions) {
-      const date = toCalendarDateIso(transaction.createdAt, timezone);
-      byDate.set(date, (byDate.get(date) ?? 0) + transaction.points);
+    for (const row of rows) {
+      byDate.set(row.date, (byDate.get(row.date) ?? 0) + row.points);
     }
     return byDate;
   },

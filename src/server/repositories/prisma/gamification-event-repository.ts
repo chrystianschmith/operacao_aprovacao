@@ -58,4 +58,13 @@ export class PrismaGamificationEventRepository implements GamificationEventRepos
       await prisma.gamificationEvent.findMany({ where: { userId }, orderBy: { createdAt: "desc" } })
     ).map(map);
   }
+  async countByType(userId: string) {
+    const { prisma } = await import("@/server/db/prisma");
+    const rows = await prisma.gamificationEvent.groupBy({
+      by: ["type"],
+      where: { userId },
+      _count: { _all: true },
+    });
+    return rows.map((row) => ({ type: row.type, count: row._count._all }));
+  }
 }

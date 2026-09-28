@@ -45,4 +45,16 @@ export interface PointTransactionRepository {
   listByUserId(userId: string): Promise<PointTransactionEntity[]>;
   /** Saldo total (pontos e XP) do usuário — soma simples de todas as linhas (ver nota acima). */
   sumByUserId(userId: string): Promise<{ points: number; xp: number }>;
+  /**
+   * Soma de `points` POR DIA CIVIL na `timezone` informada (mesma semântica de
+   * `toCalendarDateIso`, `@/server/services/study-tracking/activity-days`): a chave `date` é
+   * `YYYY-MM-DDT00:00:00.000Z` (meia-noite UTC do dia calendário local). Agregado NO banco
+   * (ex.: `to_char("createdAt" AT TIME ZONE ...)`) em vez de carregar o ledger inteiro — o
+   * histórico de pontos cresce sem limite por usuário e o resultado só precisa de um par
+   * por dia.
+   */
+  sumPointsByDate(
+    userId: string,
+    timezone: string,
+  ): Promise<Array<{ date: string; points: number }>>;
 }

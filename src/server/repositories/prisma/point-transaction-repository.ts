@@ -41,4 +41,15 @@ export class PrismaPointTransactionRepository implements PointTransactionReposit
     });
     return { points: result._sum.points ?? 0, xp: result._sum.xp ?? 0 };
   }
+  async sumPointsByDate(userId: string, timezone: string) {
+    const { prisma } = await import("@/server/db/prisma");
+    const rows = await prisma.$queryRaw<Array<{ day: string; points: number }>>`
+      SELECT to_char("createdAt" AT TIME ZONE ${timezone}::text, 'YYYY-MM-DD') AS "day",
+             CAST(SUM(points) AS integer) AS "points"
+      FROM "PointTransaction"
+      WHERE "userId" = ${userId}
+      GROUP BY "day"
+    `;
+    return rows.map((row) => ({ date: `${row.day}T00:00:00.000Z`, points: row.points }));
+  }
 }

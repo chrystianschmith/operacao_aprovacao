@@ -1,4 +1,5 @@
 import { mockPointTransactionSeed } from "@/mocks";
+import { toCalendarDateIso } from "@/server/services/study-tracking/activity-days";
 import type {
   PointTransactionCreateInput,
   PointTransactionEntity,
@@ -56,6 +57,19 @@ export class MockPointTransactionRepository implements PointTransactionRepositor
         }),
         { points: 0, xp: 0 },
       );
+  }
+
+  async sumPointsByDate(
+    userId: string,
+    timezone: string,
+  ): Promise<Array<{ date: string; points: number }>> {
+    const byDate = new Map<string, number>();
+    for (const transaction of store) {
+      if (transaction.userId !== userId) continue;
+      const date = toCalendarDateIso(transaction.createdAt, timezone);
+      byDate.set(date, (byDate.get(date) ?? 0) + transaction.points);
+    }
+    return [...byDate.entries()].map(([date, points]) => ({ date, points }));
   }
 }
 
