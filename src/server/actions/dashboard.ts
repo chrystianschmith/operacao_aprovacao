@@ -19,6 +19,7 @@ export async function getDashboardAction(): Promise<ActionResult<DashboardDTO>> 
     const dashboard = await getStudentDashboard(session.userId);
     return ok(dashboard);
   } catch (error) {
+    console.error("[debug] getDashboardAction error:", error);
     return toActionError(error, "Não foi possível carregar o dashboard.");
   }
 }
