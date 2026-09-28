@@ -22,7 +22,7 @@ Corrigido em 27/09: os canais de aquisição (`/sales` e variantes) foram adicio
 
 ## Produção (deploy de 16/09)
 
-Ambiente Vercel `operacao-aprovacao` está publicado com banco Supabase (`wgbmzbblsigjbxtwqhdm`, plano Free, São Paulo), `APP_ENV=production`, `DATA_SOURCE=prisma`, RLS habilitado, role de runtime `app_runtime` (BYPASSRLS, sem DDL). A migration `0013_add_performance_indexes` (aditiva: índices + `Question.statementHash` opcional) **não foi aplicada no banco de produção** — falhou por falta de privilégio DDL do `app_runtime` e foi marcada como `rolled back` via `prisma migrate resolve`. É 100% aditiva e nenhum código a consome; o deploy não depende dela. Para aplicar é preciso a conexão `postgres` (dono) do painel Supabase — pendência registrada, não bloqueante.
+Ambiente Vercel `operacao-aprovacao` está publicado com banco Supabase (`wgbmzbblsigjbxtwqhdm`, plano Free, São Paulo), `APP_ENV=production`, `DATA_SOURCE=prisma`, RLS habilitado, role de runtime `app_runtime` (BYPASSRLS, sem DDL). Em 27/09 a migration `0013_add_performance_indexes` foi **aplicada de fato em produção**: os 10 índices aditivos foram criados via Management API (role `postgres`, dona das tabelas) e a migration foi marcada como `applied` em `_prisma_migrations` — não há mais migrations pendentes e o próximo `prisma migrate deploy` passa. (A coluna `Question.statementHash` não é criada: foi removida do schema e não é usada pelo código.)
 
 `RESEND_API_KEY` e `EMAIL_FROM` **não estão configurados** em produção. Com isso, o envio de e-mail (verificação de cadastro, recuperação de senha, fila de e-mails do cron) degrada com `AccountConfigurationError` ("Envio de e-mail indisponível. Tente novamente mais tarde.") — cadastro externo permanece fechado na prática. Aplique o remetente Resend + chave no ambiente Production da Vercel e religue o cron de e-mail para abrir o fluxo de cadastro.
 
@@ -30,7 +30,7 @@ Ambiente Vercel `operacao-aprovacao` está publicado com banco Supabase (`wgbmzb
 
 | Verificação                                    | Resultado                                                                                                                                             |
 | ---------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
-| Unitários                                      | 981 aprovados, 153 arquivos (27/09/2026)                                                                                                                  |
+| Unitários                                      | 999 aprovados, 157 arquivos (27/09/2026)                                                                                                                  |
 | Integração PostgreSQL                          | 11 arquivos (origem e banco restaurado; executados no CI)                                                                                                |
 | ESLint global                                  | Aprovado (27/09/2026)                                                                                                                                      |
 | TypeScript / build Next                        | Aprovados; `npm run build:demo` (validação local, `APP_ENV=demo`) verde                                                                                     |
