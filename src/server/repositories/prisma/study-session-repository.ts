@@ -63,6 +63,26 @@ export class PrismaStudySessionRepository implements StudySessionRepository {
       })
     ).map(map);
   }
+  async listUserIdsWithActivitySince(sinceIso: string) {
+    const { prisma } = await import("@/server/db/prisma");
+    const since = new Date(sinceIso);
+    const rows = await prisma.$queryRaw<Array<{ userId: string }>>`
+      SELECT "userId"::text AS "userId" FROM "StudySession" WHERE "lastHeartbeatAt" >= ${since}
+      UNION
+      SELECT "userId"::text AS "userId" FROM "StudyActivity" WHERE "occurredAt" >= ${since}
+      UNION
+      SELECT "userId"::text AS "userId" FROM "PointTransaction" WHERE "createdAt" >= ${since}
+      UNION
+      SELECT "userId"::text AS "userId" FROM "FocusSession" WHERE "startedAt" >= ${since}
+      UNION
+      SELECT "userId"::text AS "userId" FROM "UserStreak"
+      UNION
+      SELECT "userId"::text AS "userId" FROM "DailyGoal"
+      UNION
+      SELECT "userId"::text AS "userId" FROM "WeeklyGoal"
+    `;
+    return [...new Set(rows.map((row) => row.userId))];
+  }
   async saveSession(entity: StudySessionEntity) {
     const { prisma } = await import("@/server/db/prisma");
     const { inRepositoryTransaction } = await import("@/server/repositories/transaction");

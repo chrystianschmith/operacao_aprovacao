@@ -58,4 +58,11 @@ export interface StudySessionRepository {
   /** Sessões do usuário (qualquer aula) com heartbeat recente — usado para detectar sessões
    *  simultâneas suspeitas (CLAUDE.md §14). */
   listRecentSessionsByUserId(userId: string, sinceIso: string): Promise<StudySessionEntity[]>;
+  /** IDs (DISTINTOS) de usuários com QUALQUER atividade de estudo registrada `>= sinceIso` —
+   *  usado pelo fechamento diário (`closeDailyStudyMetrics`, rota `/api/cron/daily-close`) para
+   *  descobrir quem recalcular. Cruzamento de fontes de atividade (tempo de vídeo/tarefas via
+   *  `StudySession`, pontos via `PointTransaction`, sessões de foco via `FocusSession`) com os
+   *  caches já materializados (`UserStreak`/`DailyGoal`/`WeeklyGoal` — estes cobrem usuários
+   *  cuja última atividade foi antes do corte, ex.: faltou fechar um dia). */
+  listUserIdsWithActivitySince(sinceIso: string): Promise<string[]>;
 }

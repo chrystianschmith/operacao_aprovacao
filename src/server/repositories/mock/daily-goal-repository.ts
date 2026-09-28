@@ -53,3 +53,8 @@ export function __resetMockDailyGoalStore(): void {
   store.splice(0, store.length);
   sequence.value = 0;
 }
+
+/** Uso do fechamento diário (`study-tracking/daily-close`) — userIds com meta diária. */
+export function __listMockDailyGoalUserIds(): string[] {
+  return [...new Set(store.map((entry) => entry.userId))];
+}

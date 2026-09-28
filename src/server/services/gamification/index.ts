@@ -31,6 +31,7 @@ export {
   type DailyGoalCompletedPayload,
   type WeeklyGoalCompletedPayload,
   type StreakReachedPayload,
+  type PointsAwardedPayload,
 } from "./events";
 
 // Handlers (registrados via `registerGamificationEventHandlers`).

@@ -19,9 +19,12 @@ import {
   type ModuleCompletedPayload,
 } from "@/server/services/gamification";
 import { computeProgressForCourse } from "@/server/services/courses/shared";
+import { DEFAULT_TIMEZONE, toCalendarDateIso } from "./activity-days";
 import { assertActiveEnrollment } from "./enrollment";
 import { evaluateHeartbeat, sumIntervalSeconds, type CoveredInterval } from "./heartbeat-evaluator";
+import { recalculateDailyGoal, recalculateWeeklyGoal } from "./goals";
 import { checkHeartbeatRateLimit, heartbeatRateLimitKey } from "./rate-limit";
+import { recalculateStreak } from "./streak";
 
 /**
  * Registra os consumidores de gamificação assim que este módulo é carregado. Ainda um
@@ -56,7 +59,10 @@ function findLessonStatus(computed: ComputedCourseProgress, lessonId: string): L
  * - o intervalo real entre heartbeats é medido pelo relógio do SERVIDOR (`Date.now()`),
  *   nunca por `input.clientTimestamp` (que só serve para detectar duplicidade exata).
  */
-async function recordHeartbeatInTransaction(userId: string, input: HeartbeatInput): Promise<HeartbeatResultDTO> {
+async function recordHeartbeatInTransaction(
+  userId: string,
+  input: HeartbeatInput,
+): Promise<{ result: HeartbeatResultDTO; refreshMetrics: boolean }> {
   const session = await requireUser();
   const config = await getEffectiveBusinessConfig();
   assertOwnership(userId, session.userId);
@@ -290,7 +296,7 @@ async function recordHeartbeatInTransaction(userId: string, input: HeartbeatInpu
     },
   });
 
-  return {
+  const result: HeartbeatResultDTO = {
     lessonId: input.lessonId,
     watchedPercent: Math.round(finalWatchedFraction * 10_000) / 100,
     status: lessonStatusAfter,
@@ -299,8 +305,51 @@ async function recordHeartbeatInTransaction(userId: string, input: HeartbeatInpu
     completion,
     flags,
   };
+
+  // Recalc-on-write (Fase 12): esta chamada CREDITOU tempo válido novo? Então a sequência e as
+  // metas devem ser re-materializadas (uma vez por dia civil, ver `refreshDailyStudyMetrics`
+  // abaixo) — em vez de recalcular a cada leitura de acompanhamento/dashboard.
+  const refreshMetrics = persistedSession.validSeconds > (previousSession?.validSeconds ?? 0);
+
+  return { result, refreshMetrics };
+}
+
+/**
+ * Refresh diário-ÚNICO de streak + metas (recalc-on-write, Fase 12): disparado logo após o
+ * heartbeat que credita tempo válido novo. `reserveInterval` garante no máximo 1 execução por
+ * dia civil por usuário no Prisma (tabela `SecurityRateLimit`); no mock, o `Map` por processo
+ * devolve `false` nas chamadas seguintes do mesmo dia.
+ *
+ * Seguro/idempotente: re-executar (ex.: hot-reload, segunda instância) apenas re-upserta os
+ * MESMOS valores — não duplica pontos (emissões de conclusão usam guard `wasAchieved` +
+ * `idempotencyKey` própria) nem consome freeze em excesso (`computeStreak` é determinístico
+ * para as mesmas atividades). Em falha, apaga a entrada do Map para permitir nova tentativa no
+ * próximo heartbeat do dia (o erro NÃO derruba o heartbeat — o refresh é oportunista).
+ */
+const refreshedStudyMetricsOn = new Map<string, string>();
+async function refreshDailyStudyMetrics(userId: string, now: Date): Promise<void> {
+  const date = toCalendarDateIso(now.toISOString(), DEFAULT_TIMEZONE);
+  const key = `study-metrics:${userId}:${date}`;
+  const shouldRun = await reserveInterval(key, 86_400_000, () => refreshedStudyMetricsOn.get(key) !== date);
+  if (!shouldRun) return;
+  try {
+    await Promise.all([
+      recalculateStreak(userId, now),
+      recalculateDailyGoal(userId, now),
+      recalculateWeeklyGoal(userId, now),
+    ]);
+    refreshedStudyMetricsOn.set(key, date);
+  } catch {
+    refreshedStudyMetricsOn.delete(key);
+  }
 }
 
 export async function recordHeartbeat(userId: string, input: HeartbeatInput): Promise<HeartbeatResultDTO> {
-  return inRepositoryTransaction(() => recordHeartbeatInTransaction(userId, input));
+  const { result, refreshMetrics } = await inRepositoryTransaction(() =>
+    recordHeartbeatInTransaction(userId, input),
+  );
+  if (refreshMetrics) {
+    await refreshDailyStudyMetrics(userId, new Date());
+  }
+  return result;
 }

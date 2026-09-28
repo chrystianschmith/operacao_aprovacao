@@ -2,13 +2,15 @@ import { getEffectiveBusinessConfig } from "@/server/services/admin/effective-co
 import { inRepositoryTransaction } from "@/server/repositories/transaction";
 import { GAMIFICATION_REWARDS } from "@/config/business";
 import { auditLog } from "@/server/audit";
+import { eventBus } from "@/server/events";
 import { getRepositories } from "@/server/repositories";
 import type {
   GamificationEventType,
   GamificationEventEntity,
 } from "@/server/repositories/contracts/gamification-event-repository";
 import type { PointTransactionEntity } from "@/server/repositories/contracts/point-transaction-repository";
-import { type AchievementDefinition } from "./achievements";
+import type { AchievementDefinition } from "./achievements";
+import type { PointsAwardedPayload } from "./events";
 import { computeUserGamificationStats, getAchievementDefinitions } from "./read";
 
 /**
@@ -123,6 +125,18 @@ async function awardGamificationEventInTransaction(
     result: "success",
     correlationId: input.idempotencyKey,
     metadata: { points, xp, ruleVersion: config.version },
+  });
+
+  // Recalc-on-write (Fase 12): avisa os consumidores (metas diária/semanal, `goals.ts`) que um
+  // award real ECRECE — eles re-materializam os caches SEM depender de leitura por página
+  // (tracking-overview/dashboard passam a ler só o cache). Idempotente: a chave
+  // `points-awarded:<awardKey>` deriva da `idempotencyKey` do award, então o outbox/EventBus
+  // nunca reprocessa o mesmo award. Ver pendência de transação única no TODO da classe.
+  await eventBus.emit<PointsAwardedPayload>({
+    type: "PointsAwarded",
+    payload: { userId: input.userId, awardIdempotencyKey: input.idempotencyKey },
+    idempotencyKey: `points-awarded:${input.idempotencyKey}`,
+    occurredAt: now,
   });
 
   return { transaction, event, awardedNow: true };

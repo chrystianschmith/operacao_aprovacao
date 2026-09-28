@@ -28,15 +28,22 @@ export {
 // Fase 12 — sequência (I/O + eventos de gamificação).
 export { recalculateStreak, getUserStreak, type UserStreakView } from "./streak";
 
-// Fase 12 — metas diária/semanal (I/O + eventos de gamificação).
+// Fase 12 — metas diária/semanal (I/O + eventos de gamificação). Leituras read-only num
+// recalc-on-write: `getDailyGoalView`/`getWeeklyGoalView` NUNCA recalcula/persiste (só o
+// recálculo via `PointsAwarded`/heartbeat-diário/fechamento diário escreve).
 export {
   isGoalAchieved,
   recalculateDailyGoal,
   recalculateWeeklyGoal,
+  getDailyGoalView,
+  getWeeklyGoalView,
   type DailyGoalView,
   type GoalView,
   type WeeklyGoalView,
 } from "./goals";
+
+// Fase 12 — fechamento diário (cron `/api/cron/daily-close`, recalc-on-write).
+export { closeDailyStudyMetrics, type DailyCloseInput, type DailyCloseResult } from "./daily-close";
 
 // Fase 12 — diagnóstico de preparação (puro).
 export { computeDiagnosis } from "./diagnosis";

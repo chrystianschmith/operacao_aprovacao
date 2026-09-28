@@ -32,8 +32,8 @@ import {
   toActivityDates,
   toCalendarDateIso,
 } from "./activity-days";
-import { recalculateDailyGoal, recalculateWeeklyGoal } from "./goals";
-import { recalculateStreak } from "./streak";
+import { getDailyGoalView, getWeeklyGoalView } from "./goals";
+import { getUserStreak } from "./streak";
 
 /**
  * Serviço de acompanhamento (Fase 12 — agente `study-tracking`, CLAUDE.md §14/§31). Agrega
@@ -46,8 +46,16 @@ import { recalculateStreak } from "./streak";
  *   `computePerformance` (`@/server/services/simulations`) para bySubject/byTopic;
  * - revisões atrasadas/progresso até a prova: `getPlan` (Fase 11 — plano de estudos, mesmo
  *   agente `study-tracking`);
- * - sequência/metas: `recalculateStreak`/`recalculateDailyGoal`/`recalculateWeeklyGoal`
- *   (`./streak.ts`/`./goals.ts`, Fase 12 — recém-implementadas nesta fase).
+ * - sequência/metas: `getUserStreak`/`getDailyGoalView`/`getWeeklyGoalView`
+ *   (`./streak.ts`/`./goals.ts`, Fase 12) — leituras SOMENTE-leitura de caches materializados;
+ *   NENHUM recálculo/upsert nesta chamada (antes `recalculate*` rodava a cada visita).
+ *
+ * Recalc-on-write (Fase 12): streak/metas só são re-materializados em
+ *   (a) `PointsAwarded` (motor de recompensa emitindo em todo award REAL, `./goals.ts`),
+ *   (b) refresh diário-único no heartbeat com atividade válida (`./record-heartbeat.ts`),
+ *   (c) cron de fechamento diário (`./daily-close.ts`, rota `/api/cron/daily-close`).
+ * O progresso exposto aqui é sempre AO VIVO (calculado do ledger/`StudySession` no read) —
+ * apenas `achieved`/`achievedAt`/streak refletem a última materialização.
  *
  * Autorização (ADR-0006): `requireUser` + `assertOwnership` na fronteira; `getPlan` também
  * reaplica internamente (redundante, mas seguro e barato — mesmo padrão de
@@ -398,9 +406,9 @@ function buildExamProgress(plan: StudyPlanDTO | null, todayIso: string): Trackin
 }
 
 /**
- * Agrega o acompanhamento completo do aluno autenticado. Também RECALCULA (e persiste) a
- * sequência e as metas diária/semanal desta chamada — visitar a página de acompanhamento é o
- * gatilho de recálculo nesta fase (não há cron dedicado ainda; ver pendências do relatório).
+ * Agrega o acompanhamento completo do aluno autenticado. SOMENTE-leitura: não recalcula nem
+ * persiste sequência/metas (recalc-on-write via `PointsAwarded`/heartbeat-diário/fechamento
+ * diário — ver comentário de cabeçalho).
  */
 export async function getTrackingOverview(
   userId: string,
@@ -412,6 +420,7 @@ export async function getTrackingOverview(
 
   const repos = getRepositories();
   const today = toCalendarDateIso(now.toISOString(), timezone);
+  const weekStart = weekStartIso(today);
 
   const [
     sessions,
@@ -426,9 +435,9 @@ export async function getTrackingOverview(
     repos.lessonProgress.listByUserId(userId),
     buildQuestionsData(userId),
     getPlan(userId, now),
-    recalculateStreak(userId, now, timezone),
-    recalculateDailyGoal(userId, now, timezone),
-    recalculateWeeklyGoal(userId, now, timezone),
+    getUserStreak(userId),
+    getDailyGoalView(userId, today, timezone),
+    getWeeklyGoalView(userId, weekStart, timezone),
   ]);
 
   const secondsByDate = sumValidSecondsByDate(sessions, timezone);
@@ -456,10 +465,10 @@ export async function getTrackingOverview(
     consistency: buildConsistency(activeDates, today),
     examProgress: buildExamProgress(plan, today),
     streak: {
-      currentStreak: streakView.currentStreak,
-      longestStreak: streakView.longestStreak,
-      lastActiveDate: streakView.lastActiveDate,
-      freezesAvailable: streakView.freezesAvailable,
+      currentStreak: streakView?.currentStreak ?? 0,
+      longestStreak: streakView?.longestStreak ?? 0,
+      lastActiveDate: streakView?.lastActiveDate ?? null,
+      freezesAvailable: streakView?.freezesAvailable ?? 0,
     },
     dailyGoal: {
       targetMinutes: dailyGoalView.targetMinutes,

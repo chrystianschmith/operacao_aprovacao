@@ -156,6 +156,44 @@ describe("study-tracking/tracking-overview — getTrackingOverview (Fase 12, int
     expect(overview.lessonsCompleted).toBe(1);
   });
 
+  it("getTrackingOverview é SOMENTE-leitura — não persiste streak/metas (recalc-on-write)", async () => {
+    const userId = "tov-readonly";
+    authMock.mockResolvedValue(fakeSession(userId));
+    await enrollUser(userId);
+
+    // Pontos seedados DIRETAMENTE no ledger (sem passar pelo motor — logo, sem `PointsAwarded`
+    // e sem gancho de materialização disparado) + NENHUMA sessão/heartbeat.
+    const now = new Date(BASE_TIME);
+    await getRepositories().pointTransactions.create({
+      userId,
+      gamificationEventId: null,
+      idempotencyKey: `seed:${userId}:readonly`,
+      type: "EARN",
+      points: 300,
+      xp: 300,
+      reason: "seed",
+      now,
+    });
+    const repos = getRepositories();
+    expect(await repos.userStreaks.findByUserId(userId)).toBeNull();
+    expect(await repos.dailyGoals.findByUserIdAndDate(userId, "2026-07-13T00:00:00.000Z")).toBeNull();
+
+    const overview = await getTrackingOverview(userId, now);
+
+    // Progresso AO VIVO, mesmo sem linha persistida (ledger do dia / semana).
+    expect(overview.dailyGoal.progressPoints).toBe(300);
+    expect(overview.weeklyGoal.progressPoints).toBe(300);
+    expect(overview.dailyGoal.achieved).toBe(false);
+    expect(overview.weeklyGoal.achieved).toBe(false);
+    expect(overview.streak.currentStreak).toBe(0);
+
+    // A leitura NÃO criou nenhuma linha — antes do recalc-on-write isto persistiria
+    // (`recalculate*` rodava dentro de `getTrackingOverview`).
+    expect(await repos.dailyGoals.findByUserIdAndDate(userId, "2026-07-13T00:00:00.000Z")).toBeNull();
+    expect(await repos.weeklyGoals.findByUserIdAndWeekStart(userId, "2026-07-13T00:00:00.000Z")).toBeNull();
+    expect(await repos.userStreaks.findByUserId(userId)).toBeNull();
+  });
+
   it("agrega questões respondidas/acertos, ignorando questões em branco", async () => {
     const userId = "tov-questions";
     authMock.mockResolvedValue(fakeSession(userId));

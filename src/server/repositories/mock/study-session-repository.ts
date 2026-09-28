@@ -2,6 +2,10 @@ import type {
   StudySessionEntity,
   StudySessionRepository,
 } from "../contracts/study-session-repository";
+import { __listMockDailyGoalUserIds } from "./daily-goal-repository";
+import { __listMockPointTransactionUserIdsSince } from "./point-transaction-repository";
+import { __listMockUserStreakUserIds } from "./user-streak-repository";
+import { __listMockWeeklyGoalUserIds } from "./weekly-goal-repository";
 import { mockStore } from "./mock-store";
 
 /**
@@ -42,6 +46,19 @@ export class MockStudySessionRepository implements StudySessionRepository {
     return [...store.values()].filter(
       (session) => session.userId === userId && session.lastHeartbeatAt >= sinceIso,
     );
+  }
+
+  async listUserIdsWithActivitySince(sinceIso: string): Promise<string[]> {
+    const ids = new Set<string>([
+      ...[...store.values()]
+        .filter((session) => session.lastHeartbeatAt >= sinceIso)
+        .map((session) => session.userId),
+      ...__listMockPointTransactionUserIdsSince(sinceIso),
+      ...__listMockUserStreakUserIds(),
+      ...__listMockDailyGoalUserIds(),
+      ...__listMockWeeklyGoalUserIds(),
+    ]);
+    return [...ids];
   }
 }
 

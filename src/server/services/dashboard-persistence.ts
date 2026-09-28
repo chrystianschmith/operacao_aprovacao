@@ -89,9 +89,9 @@ export async function getPersistentDashboardData(userId: string) {
     contest,
     ranking,
     nextLesson,
-    // Roteados para fora para o dashboard-service NÃO recalcular sequência/metas uma 2ª vez no
-    // mesmo request (Já recalculadas dentro de `getTrackingOverview` acima — ver duplicação de
-    // `recalculateStreak`/`recalculateDailyGoal`/`recalculateWeeklyGoal` em dashboard-service).
+    // Streak/metas MATERIALIZADOS (recalc-on-write — `PointsAwarded`/refresh diário do
+    // heartbeat/fechamento diário). A leitura de `getTrackingOverview` é SOMENTE-leitura; o
+    // `dashboard-service` também não recalcula no modo Prisma (apenas o mock, inline, ao ler).
     streak: {
       currentStreak: overview.streak.currentStreak,
       longestStreak: overview.streak.longestStreak,

@@ -27,9 +27,9 @@ import { computeLevel, type ComputedLevel } from "./levels";
  * Deriva `UserGamificationStats` do ledger de eventos já processados (auditável — cada
  * contagem é rastreável a um `GamificationEvent` real), mais as métricas reais da Fase 12
  * (`UserStreakRepository`/`StudySession`, agregadas aqui só por LEITURA — o recálculo/persistência
- * de `UserStreak` é feito por `recalculateStreak`, chamado a partir de
- * `tracking-overview`/`dashboard-service`). Campos cuja fonte definitiva ainda não existe
- * permanecem neutros (ver TODOs em `./achievements.ts`).
+ * de `UserStreak`/metas caminha por recalc-on-write: refreshes diários em `record-heartbeat`,
+ * eventos `PointsAwarded` do motor e o cron `daily-close`). Campos cuja fonte definitiva ainda
+ * não existe permanecem neutros (ver TODOs em `./achievements.ts`).
  */
 export async function computeUserGamificationStats(userId: string): Promise<UserGamificationStats> {
   const repos = getRepositories();

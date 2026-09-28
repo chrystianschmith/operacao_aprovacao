@@ -72,11 +72,12 @@ export async function getStudentDashboard(userId: string): Promise<DashboardDTO>
   // (redundante, mas seguro e barato).
   const gamification = await getUserGamification(userId);
 
-  // Fonte real de sequência/metas (Fase 12). No modo Prisma, `getPersistentDashboardData` já
-  // disparou `recalculateStreak`/`recalculateDailyGoal`/`recalculateWeeklyGoal` DENTRO de
-  // `getTrackingOverview` — recalcular aqui seria trabalho duplicado (2ª passada de recálculo
-  // persistido + 2× `listUserActivitySamples` no mesmo request). Reutilizamos os valores já
-  // persistidos; só o modo mock (sem banco) recalcula aqui.
+  // Fonte real de sequência/metas (Fase 12). No modo Prisma, `getPersistentDashboardData` lê
+  // caches MATERIALIZADOS (recalc-on-write: `PointsAwarded`/refresh diário do heartbeat/
+  // fechamento diário — ver `study-tracking/tracking-overview.ts`); recalcular aqui seria uma
+  // 2ª passada de recálculo persistido + 2× `listUserActivitySamples` no mesmo request.
+  // Reutilizamos os valores já materializados; só o modo mock (sem banco, sem gancho de
+  // recalc-on-write) recalcula inline nesta leitura.
   const recomputed =
     persistent === null
       ? await Promise.all([

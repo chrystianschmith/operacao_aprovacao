@@ -40,3 +40,8 @@ export class MockUserStreakRepository implements UserStreakRepository {
 export function __resetMockUserStreakStore(): void {
   store.clear();
 }
+
+/** Uso do fechamento diário (`study-tracking/daily-close`) — userIds com streak materializado. */
+export function __listMockUserStreakUserIds(): string[] {
+  return [...store.keys()];
+}

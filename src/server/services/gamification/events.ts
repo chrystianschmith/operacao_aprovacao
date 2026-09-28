@@ -80,6 +80,17 @@ export interface StreakReachedPayload {
   milestone: 7 | 30;
 }
 
+/** Emitido internamente por `gamification/engine.ts` sempre que um award REAL é criado —
+ *  consumido por `study-tracking/goals.ts` para materializar metas no recalc-on-write (Fase 12)
+ *  sem recalcular a cada leitura (`tracking-overview` lê só o cache). Ancorado na MESMA
+ *  `idempotencyKey` do award (prefixo `points-awarded:`), então re-emitir o mesmo award nunca
+ *  reprocessa (outbox/EventBus deduplicam por chave). */
+export interface PointsAwardedPayload {
+  userId: string;
+  /** Cópia da `idempotencyKey` do award original — auditoria/debug. */
+  awardIdempotencyKey: string;
+}
+
 /** Constrói a `idempotencyKey` no padrão `<tipo>:<userId>:<entidadeId>` (CLAUDE.md §15/§25). */
 export function buildIdempotencyKey(type: GamificationEventType, userId: string, sourceId: string): string {
   const slug = type.toLowerCase().replaceAll("_", "-");

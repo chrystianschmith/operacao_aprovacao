@@ -64,3 +64,8 @@ export function __resetMockPointTransactionStore(): void {
   store.splice(0, store.length, ...mockPointTransactionSeed);
   sequence.value = store.length;
 }
+
+/** Uso do fechamento diário (`study-tracking/daily-close`) — userIds com transação `>= sinceIso`. */
+export function __listMockPointTransactionUserIdsSince(sinceIso: string): string[] {
+  return [...new Set(store.filter((transaction) => transaction.createdAt >= sinceIso).map((transaction) => transaction.userId))];
+}

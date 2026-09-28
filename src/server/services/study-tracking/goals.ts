@@ -9,12 +9,43 @@ import {
   buildIdempotencyKey,
   registerGamificationEventHandlers,
   type DailyGoalCompletedPayload,
+  type PointsAwardedPayload,
   type WeeklyGoalCompletedPayload,
 } from "@/server/services/gamification";
 import { DEFAULT_TIMEZONE, sumValidSecondsByDate, toCalendarDateIso } from "./activity-days";
 
 /** Mesmo padrão de `./streak.ts` — idempotente, seguro com múltiplos imports/hot-reload. */
 registerGamificationEventHandlers();
+
+/**
+ * Assinatura do recalc-on-write (Fase 12): quando `PointsAwarded` é emitido pelo motor de
+ * recompensa (award REAL criado), re-materializa as metas diária/semanal do usuário. ANTES
+ * este recálculo acontecia em TODA leitura de acompanhamento/dashboard (`tracking-overview`
+ * recalcula/upsert a cada visita); AGORA só acontece neste gancho, no refresh diário do
+ * heartbeat (`./record-heartbeat.ts`) e no fechamento diário (`./daily-close.ts`) — leituras
+ * passam a usar `getDailyGoalView`/`getWeeklyGoalView` (SOMENTE-leitura).
+ *
+ * O handler fica AQUI (não em `register-gamification.ts`) para evitar ciclo de imports:
+ * `goals.ts` já importa o barrel de gamificação (`registerGamificationEventHandlers`), e o
+ * barrel não pode importar `goals.ts` de volta. `engine.ts` só conhece o tipo do payload
+ * (`events.ts`); a assinatura é resolvida no processo que carregar este módulo.
+ *
+ * Idempotente por natureza (upsert + conclusão única por `(userId, date)`/`(userId, weekStart)`);
+ * a flag `pointsAwardedSubscribed` apenas evita reinscrição dentro do MESMO lifecycle de módulo.
+ */
+let pointsAwardedSubscribed = false;
+function subscribeToPointsAwarded(): void {
+  if (pointsAwardedSubscribed) return;
+  pointsAwardedSubscribed = true;
+  eventBus.subscribe<PointsAwardedPayload>("PointsAwarded", async ({ payload, occurredAt }) => {
+    const { userId } = payload;
+    await Promise.all([
+      recalculateDailyGoal(userId, occurredAt),
+      recalculateWeeklyGoal(userId, occurredAt),
+    ]);
+  });
+}
+subscribeToPointsAwarded();
 
 export interface GoalView {
   targetMinutes: number | null;
@@ -70,6 +101,88 @@ const sumPointsByDate = cache(
     return byDate;
   },
 );
+export { sumPointsByDate };
+
+/**
+ * Leitura SOMENTE-leitura da meta DIÁRIA (Fase 12 — recalc-on-write): NÃO recalcula, NÃO
+ * persiste, NÃO emite nada. Índole: `Date` alvo, `target*` da linha persistida ou default
+ * vigente (mesma regra do recalc), `progress*` SEMPRE ao vivo a partir do ledger de pontos
+ * (`sumPointsByDate`) e do tempo válido (`sumValidSecondsByDate`) — nunca valor cacheado;
+ * `achieved`/`achievedAt` são a decisão MATERIALIZADA no último recálculo. Em steady-state o
+ * recalc roda no MESMO instante do award/heartbeat que altera o resultado (e é `await`ado antes
+ * da resposta ao cliente), então a leitura está em dia sem custos de reescrita por página.
+ */
+export async function getDailyGoalView(
+  userId: string,
+  date: string,
+  timezone: string = DEFAULT_TIMEZONE,
+): Promise<DailyGoalView> {
+  const repos = getRepositories();
+  const existing = await repos.dailyGoals.findByUserIdAndDate(userId, date);
+
+  const targetPoints =
+    existing?.targetPoints ?? (await getEffectiveBusinessConfig()).dailyGoalTargetPoints;
+  const targetMinutes = existing?.targetMinutes ?? null;
+
+  const [pointsByDate, sessions] = await Promise.all([
+    sumPointsByDate(userId, timezone),
+    listUserActivitySamples(userId),
+  ]);
+  const secondsByDate = sumValidSecondsByDate(sessions, timezone);
+
+  return {
+    date,
+    targetMinutes,
+    targetPoints,
+    progressMinutes: Math.floor((secondsByDate.get(date) ?? 0) / 60),
+    progressPoints: pointsByDate.get(date) ?? 0,
+    achieved: existing?.achieved ?? false,
+    achievedAt: existing?.achievedAt ?? null,
+  };
+}
+
+/**
+ * Leitura SOMENTE-leitura da meta SEMANAL (semana civil `weekStartIso` — segunda a domingo,
+ * mesmo agrupamento do plano de estudos). Mesmas garantias de `getDailyGoalView`: nunca
+ * recalcula/upsert; progresso ao vivo somando os 7 dias da semana; `achieved`/`achievedAt`
+ * refletem a última materialização do recalc-on-write.
+ */
+export async function getWeeklyGoalView(
+  userId: string,
+  weekStart: string,
+  timezone: string = DEFAULT_TIMEZONE,
+): Promise<WeeklyGoalView> {
+  const repos = getRepositories();
+  const existing = await repos.weeklyGoals.findByUserIdAndWeekStart(userId, weekStart);
+
+  const targetPoints =
+    existing?.targetPoints ?? (await getEffectiveBusinessConfig()).weeklyGoalTargetPoints;
+  const targetMinutes = existing?.targetMinutes ?? null;
+
+  const [pointsByDate, sessions] = await Promise.all([
+    sumPointsByDate(userId, timezone),
+    listUserActivitySamples(userId),
+  ]);
+  const secondsByDate = sumValidSecondsByDate(sessions, timezone);
+
+  const weekEndExclusive = addDaysIso(weekStart, 7);
+  let progressPoints = 0;
+  let progressSeconds = 0;
+  for (let cursor = weekStart; cursor < weekEndExclusive; cursor = addDaysIso(cursor, 1)) {
+    progressPoints += pointsByDate.get(cursor) ?? 0;
+    progressSeconds += secondsByDate.get(cursor) ?? 0;
+  }
+
+  return {
+    weekStart,
+    targetMinutes,
+    targetPoints,
+    progressMinutes: Math.floor(progressSeconds / 60),
+    progressPoints,
+    achieved: existing?.achieved ?? false,
+    achievedAt: existing?.achievedAt ?? null,
+  };
+}
 
 /**
  * Recalcula a meta DIÁRIA (data = hoje, na timezone informada) a partir do ledger de pontos

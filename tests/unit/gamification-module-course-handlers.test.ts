@@ -154,8 +154,11 @@ describe("gamification — ModuleCompleted disparado no ponto real de conclusão
     expect(moduleEvents[0]?.points).toBe(500);
 
     const { points } = await repos.pointTransactions.sumByUserId(userId);
-    // 4 aulas x 100 + 1 módulo x 500 = 900.
-    expect(points).toBe(900);
+    // 4 aulas x 100 (400) + 1 módulo x 500 (900) + meta DIÁRIA de 150 pontos batida no mesmo
+    // dia (1050) + meta SEMANAL de 500 pontos batida na mesma semana (1550) — o recalc-on-write
+    // (Fase 12) re-materializa as metas a cada `PointsAwarded`, então os bônus de meta passam a
+    // ser creditados logo no award que os cruza (antes só no recálculo por leitura).
+    expect(points).toBe(1550);
   });
 
   it("heartbeats adicionais após o módulo já concluído não pontuam de novo", async () => {
