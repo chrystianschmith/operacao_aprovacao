@@ -18,9 +18,10 @@ import { closeDailyStudyMetrics } from "@/server/services/study-tracking/daily-c
  * conclusão usam `idempotencyKey` própria; `computeStreak` é determinístico).
  *
  * Corpo opcional (JSON) — `{ date: "YYYY-MM-DD" }` para fechar um dia específico (passado ou
- * hoje). Sem corpo (ou corpo vazio), fecha ONTEM. Recomendação de agendamento: diariamente à
- * 00:15 UTC (Vercel Cron / qualquer scheduler externo) — o arquivo `vercel.json` é mantido
- * vazio de propósito (mesmo padrão do `ranking-recalc`); documentar no scheduler.
+ * hoje). Sem corpo (ou corpo vazio), fecha ONTEM. Agendamento: `.github/workflows/cron-production.yml`
+ * dispara diariamente às 00:15 UTC (GitHub Actions — cobre a limitação do plano Vercel Hobby,
+ * que não suporta Vercel Cron; cf. GitHub Actions não agenda abaixo de 5 min, então o cron de
+ * e-mail a cada minuto usa agendador externo — ver `docs/implementation/OPERACAO.md`).
  */
 /** Comparação em tempo constante — evita vazar o segredo por timing side-channel. */
 function secretsMatch(provided: string, expected: string): boolean {

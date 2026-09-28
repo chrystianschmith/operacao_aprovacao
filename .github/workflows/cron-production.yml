@@ -1,0 +1,71 @@
+name: Cron de produção
+
+# Dispara os cron jobs da plataforma sem processo residente. Como o plano Vercel Hobby
+# não suporta Vercel Cron, este workflow é o agendador (mesma intenção da Fase 17 dos
+# docs/production/ROADMAP*): chama os endpoints protegidos por `CRON_SECRET`.
+#
+# Agendamento (UTC):
+#   - 00:15 UTC — `/api/cron/daily-close`: fecha ONTEM (streak + metas diária/semanal).
+#   - 00:40 UTC — `/api/cron/ranking-recalc`: recalcula todos os escopos default do ranking.
+#
+# Ativação (1 vez): adicionar o segredo `CRON_SECRET` em Settings → Secrets and variables →
+#   Actions (mesmo valor do `CRON_SECRET` de produção da Vercel). Opcional: `CRON_BASE_URL`
+#   (repository variable) para apontar para outro ambiente (default: produção).
+#   Ao rotacionar o `CRON_SECRET` na Vercel, atualizar este segredo também (ver
+#   docs/production/VERCEL_DEPLOYMENT.md).
+#
+on:
+  schedule:
+    - cron: "15 0 * * *"
+    - cron: "40 0 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: cron-production-${{ github.schedule }}
+  cancel-in-progress: false
+
+jobs:
+  daily-close:
+    name: Fechamento diário (streak + metas)
+    if: github.event.schedule == '15 0 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      CRON_BASE_URL: ${{ vars.CRON_BASE_URL || 'https://operacao-aprovacao-ten.vercel.app' }}
+    steps:
+      - name: Disparar /api/cron/daily-close
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::CRON_SECRET não configurado nos secrets do repositório."
+            exit 1
+          fi
+          status=$(curl --silent --show-error --fail \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -w '%{http_code}' -o /tmp/daily-close.json \
+            "${CRON_BASE_URL}/api/cron/daily-close")
+          echo "daily-close: HTTP ${status} (idempotente — re-disparos não duplicam)"
+
+  ranking-recalc:
+    name: Recálculo do ranking
+    if: github.event.schedule == '40 0 * * *' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    env:
+      CRON_BASE_URL: ${{ vars.CRON_BASE_URL || 'https://operacao-aprovacao-ten.vercel.app' }}
+    steps:
+      - name: Disparar /api/cron/ranking-recalc
+        env:
+          CRON_SECRET: ${{ secrets.CRON_SECRET }}
+        run: |
+          if [ -z "${CRON_SECRET}" ]; then
+            echo "::error::CRON_SECRET não configurado nos secrets do repositório."
+            exit 1
+          fi
+          status=$(curl --silent --show-error --fail \
+            -H "Authorization: Bearer ${CRON_SECRET}" \
+            -w '%{http_code}' -o /tmp/ranking-recalc.json \
+            "${CRON_BASE_URL}/api/cron/ranking-recalc")
+          echo "ranking-recalc: HTTP ${status} (idempotente — re-disparos não duplicam)"

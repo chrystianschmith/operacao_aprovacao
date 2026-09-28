@@ -6,7 +6,20 @@ Produção/staging recusam mock, segredos default e URL pública sem HTTPS. Use 
 
 As contas públicas exigem Resend configurado e `ACCOUNT_EMAIL_ENCRYPTION_KEY` Base64 canônica de 32 bytes aleatórios. Preserve essa chave com segurança: a fila guarda apenas payload cifrado AES-GCM. Sem a chave, e-mails pendentes não podem ser recuperados. Planeje rotação drenando a fila antes da troca. Não reutilize `AUTH_SECRET`.
 
-O scheduler deve chamar `/api/cron/account-emails` a cada minuto com `Authorization: Bearer CRON_SECRET`. Cadastro enfileira; não envia diretamente. Sem scheduler, a conta não recebe o link. Configure alarmes de fila atrasada/falha e valide entrega no domínio real.
+### Agendamento dos crons
+
+O `CRON_SECRET` é o mesmo para todas as rotas (`Authorization: Bearer <segredo>`). A divisão da agenda:
+
+| Cron | Frequência | Agendador |
+|---|---|---|
+| `/api/cron/account-emails` | a cada **minuto** | externo (cron-job.org/Better Stack/CI) — o GitHub Actions não agenda abaixo de 5 min |
+| `/api/cron/billing` | a cada 15 min | externo (mesmo agendador) |
+| `/api/cron/daily-close` | diário 00:15 UTC | `.github/workflows/cron-production.yml` (GitHub Actions) |
+| `/api/cron/ranking-recalc` | diário 00:40 UTC | `.github/workflows/cron-production.yml` (GitHub Actions) |
+
+O workflow precisa do segredo `CRON_SECRET` em Settings → Secrets and variables → Actions (mesmo valor do ambiente Production da Vercel) e, opcionalmente, `CRON_BASE_URL` (repository variable; default: produção). Rotacione os dois juntos. O GitHub Actions **desabilita** workflows de repositório inativo após ~60 dias — monitore pelo alarme de dead-man's-switch.
+
+`/api/cron/account-emails` a cada minuto: cadastro enfileira, não envia diretamente. Sem scheduler, a conta não recebe o link. Configure alarmes de fila atrasada/falha e valide entrega no domínio real.
 
 ## Materiais e vídeo
 
